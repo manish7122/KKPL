@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Team Portal – KKPL Auction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/team.css"/>
+</head>
+<body class="app-page team-app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🏉</div>
+      <div>
+        <div class="logo-title" id="team-logo-name">TEAM</div>
+        <div class="logo-sub">Team Portal</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="#" onclick="showTeamSection('overview')">
+        <span class="nav-icon">🏠</span> Overview
+      </a>
+      <a class="nav-item" href="#" onclick="showTeamSection('squad')">
+        <span class="nav-icon">🧍</span> My Squad
+      </a>
+      <a class="nav-item" href="#" onclick="showTeamSection('auction-live')">
+        <span class="nav-icon">🔨</span> Auction Status
+      </a>
+      <a class="nav-item" href="#" onclick="showTeamSection('all-results')">
+        <span class="nav-icon">📋</span> All Results
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="team-page-title">Team Overview</div>
+      <div class="topbar-right">
+        <span class="admin-badge" id="team-topbar-badge">🏆 Team</span>
+      </div>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="section active" id="section-overview">
+      <div class="team-hero glass" id="team-hero-card">
+        <!-- dynamically filled -->
+      </div>
+      <div class="team-stats-row" id="team-stats-row">
+        <!-- dynamically filled -->
+      </div>
+      <div class="two-col">
+        <div class="card glass">
+          <div class="card-header">⭐ Key Players</div>
+          <div id="team-key-players" class="mini-list"></div>
+        </div>
+        <div class="card glass">
+          <div class="card-header">📊 Category Breakdown</div>
+          <div id="team-cat-breakdown" class="mini-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SQUAD -->
+    <section class="section" id="section-squad">
+      <h2 class="section-heading">My Squad</h2>
+      <div class="squad-filters">
+        <button class="q-filter active" onclick="filterSquad('all', this)">All</button>
+        <button class="q-filter" onclick="filterSquad('Raider', this)">Raiders</button>
+        <button class="q-filter" onclick="filterSquad('Defender', this)">Defenders</button>
+        <button class="q-filter" onclick="filterSquad('All-Rounder', this)">All-Rounders</button>
+      </div>
+      <div class="squad-grid" id="squad-grid">
+        <!-- dynamically filled -->
+      </div>
+    </section>
+
+    <!-- AUCTION STATUS -->
+    <section class="section" id="section-auction-live">
+      <h2 class="section-heading">🔨 Live Auction Status</h2>
+      <div class="auction-status-grid" id="auction-status-grid">
+        <!-- dynamically filled -->
+      </div>
+    </section>
+
+    <!-- ALL RESULTS -->
+    <section class="section" id="section-all-results">
+      <h2 class="section-heading">📋 Full Auction Results</h2>
+      <div class="table-wrap glass">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Player</th><th>Category</th><th>Team</th><th>Sold Price (₹ L)</th><th>Nationality</th>
+            </tr>
+          </thead>
+          <tbody id="all-results-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <div class="auction-result-overlay" id="auction-result-overlay" role="dialog" aria-modal="true" aria-labelledby="auction-result-title" hidden>
+    <div class="auction-result-card">
+      <button class="auction-result-close" type="button" aria-label="Close announcement" onclick="closeAuctionOutcome()">✕</button>
+      <div class="auction-result-photo-wrap">
+        <img class="auction-result-photo" id="auction-result-photo" alt="" hidden/>
+        <div class="auction-result-photo-placeholder" id="auction-result-photo-placeholder" aria-hidden="true">🏉</div>
+        <div class="auction-result-stamp" aria-hidden="true">✓</div>
+      </div>
+      <div class="auction-result-copy">
+        <div class="auction-result-kicker" id="auction-result-kicker"></div>
+        <h2 class="auction-result-title" id="auction-result-title"></h2>
+        <div class="auction-result-player" id="auction-result-player"></div>
+        <div class="auction-result-team" id="auction-result-team"></div>
+        <div class="auction-result-price" id="auction-result-price" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/team.js"></script>
+</body>
+</html>

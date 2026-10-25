@@ -1,0 +1,313 @@
+/* ============================================
+   KKPL – Team Portal Styles
+   ============================================ */
+
+/* ======= TEAM HERO ======= */
+.team-hero {
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 28px;
+  position: relative; overflow: hidden;
+}
+
+.team-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--team-color, var(--orange)) 0%, transparent 60%);
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.team-hero-color {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+}
+
+.team-hero-info { flex: 1; }
+
+.th-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem;
+  letter-spacing: 3px;
+  color: #fff;
+  line-height: 1;
+}
+
+.th-city {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.th-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+.team-hero-budget { text-align: right; }
+
+.thb-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.5rem;
+  letter-spacing: 2px;
+  color: var(--success);
+  line-height: 1;
+}
+
+.thb-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ======= TEAM STATS ======= */
+.team-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* ======= SQUAD GRID ======= */
+.squad-filters {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+}
+
+.squad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.player-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  padding: 18px;
+  position: relative; overflow: hidden;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+.player-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  border-color: var(--border-accent);
+}
+
+.player-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--orange), var(--purple));
+}
+
+.pc-number {
+  position: absolute; top: 14px; right: 14px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  color: rgba(255,255,255,0.06);
+  letter-spacing: 1px;
+}
+
+.pc-cat { margin-bottom: 10px; }
+
+.pc-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.pc-details {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 10px; font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.pc-detail { display: flex; justify-content: space-between; }
+.pc-detail .val { color: var(--text-primary); font-weight: 500; }
+
+.pc-price {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.2);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.pc-price-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  color: var(--success);
+  letter-spacing: 1px;
+}
+
+.pc-price-label {
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* ======= AUCTION STATUS GRID ======= */
+.auction-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.live-auction-card {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  background: linear-gradient(120deg, rgba(255,107,0,0.12), rgba(124,58,237,0.08));
+}
+
+.live-auction-photo {
+  width: 82px;
+  height: 96px;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.live-auction-info { flex: 1; }
+
+.live-auction-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orange);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.live-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
+}
+
+.live-auction-player {
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.live-auction-category {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.live-auction-bid {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.live-auction-bid strong {
+  color: var(--success);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+}
+
+.live-auction-idle { min-height: 90px; }
+
+@media (max-width: 600px) {
+  .live-auction-card { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .live-auction-bid { align-items: flex-start; text-align: left; width: 100%; }
+}
+
+.team-bid-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  padding: 20px;
+  transition: all 0.3s;
+}
+
+.team-bid-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-accent);
+}
+
+.tbc-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tbc-color {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+}
+
+.tbc-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.tbc-count {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  color: var(--orange);
+}
+
+.tbc-players {
+  display: flex; flex-direction: column; gap: 5px;
+}
+
+.tbc-player-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+.tbc-player-name { flex: 1; font-weight: 500; }
+
+/* ======= EMPTY STATE ======= */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 0;
+  color: var(--text-muted);
+}
+
+.empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-text { font-family: 'Rajdhani', sans-serif; font-size: 1rem; letter-spacing: 1px; }
+
+@media (max-width: 768px) {
+  .team-hero { flex-direction: column; text-align: center; }
+  .team-hero-budget { text-align: center; }
+  .squad-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .squad-grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,439 @@
+/* ============================================
+   KKPL – Admin-Specific Styles
+   ============================================ */
+
+/* ======= AUCTION CONSOLE ======= */
+.auction-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  min-height: 500px;
+}
+
+.auction-player-card {
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  display: flex; flex-direction: column; gap: 20px;
+  position: relative; overflow: hidden;
+}
+
+.auction-player-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,107,0,0.06), rgba(124,58,237,0.04));
+  pointer-events: none;
+}
+
+.on-block-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 4px;
+  color: var(--orange);
+  background: rgba(255,107,0,0.1);
+  border: 1px solid var(--border-accent);
+  border-radius: 20px;
+  padding: 4px 16px;
+  width: fit-content;
+  animation: blink-orange 2s ease-in-out infinite;
+}
+
+@keyframes blink-orange {
+  0%,100% { box-shadow: 0 0 8px rgba(255,107,0,0.3); }
+  50% { box-shadow: 0 0 20px rgba(255,107,0,0.6); }
+}
+
+.no-player-msg {
+  color: var(--text-muted);
+  font-size: 1rem;
+  text-align: center;
+  padding: 60px 0;
+}
+
+/* On-block player display */
+.obp-profile {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.obp-photo,
+.obp-photo-placeholder {
+  width: 150px;
+  height: 180px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.obp-photo {
+  display: block;
+  object-fit: cover;
+  background: rgba(0,0,0,0.25);
+}
+
+.obp-photo-placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(255,107,0,0.18), rgba(124,58,237,0.18));
+  color: var(--text-muted);
+  font-size: 3rem;
+}
+
+.obp-player-info {
+  min-width: 0;
+}
+
+.obp-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  letter-spacing: 3px;
+  color: #fff;
+  line-height: 1;
+}
+
+.photo-upload-hint {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.player-photo-preview {
+  display: block;
+  width: 110px;
+  height: 130px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.player-photo-preview[hidden] {
+  display: none;
+}
+
+.obp-meta {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px;
+}
+
+.obp-meta .badge { font-size: 0.8rem; padding: 5px 14px; }
+
+.obp-detail-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 18px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.obp-detail {
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+.obp-detail-key {
+  font-size: 0.7rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+}
+
+.obp-detail-val {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.obp-base-price {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  color: var(--available);
+  letter-spacing: 2px;
+}
+
+/* Bid Controls */
+.bid-controls {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 20px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.current-bid-row {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.bid-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.current-bid-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  letter-spacing: 2px;
+  color: var(--orange);
+}
+
+.bid-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+
+.bid-row select, .bid-row input {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif; font-size: 0.9rem;
+  outline: none; flex: 1; min-width: 140px;
+  transition: border-color 0.2s;
+}
+
+.bid-row select:focus, .bid-row input:focus { border-color: var(--success); }
+
+.bid-increment-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.bid-increment-control input {
+  width: 150px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.bid-increment-control input:focus { outline: 1px solid var(--success); }
+
+.bid-increment-hint {
+  margin-top: -8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.bid-team-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.bid-team-button {
+  min-height: 52px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--team-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--team-color) 55%, transparent);
+  border-radius: 9px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.bid-team-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--team-color) 28%, transparent);
+  border-color: var(--team-color);
+}
+
+.bid-team-button.leading {
+  border-color: var(--team-color);
+  box-shadow: 0 0 0 1px var(--team-color), 0 0 18px color-mix(in srgb, var(--team-color) 28%, transparent);
+}
+
+.bid-team-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.bid-correction-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-undo-bid,
+.btn-restart-bid {
+  flex: 1;
+  min-width: 150px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+}
+
+.btn-undo-bid {
+  color: #fbbf24;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.35);
+}
+
+.btn-undo-bid:hover:not(:disabled) {
+  background: rgba(245,158,11,0.2);
+  border-color: #f59e0b;
+}
+
+.btn-restart-bid {
+  color: #fca5a5;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.btn-restart-bid:hover:not(:disabled) {
+  background: rgba(239,68,68,0.18);
+  border-color: var(--danger);
+}
+
+.btn-undo-bid:disabled,
+.btn-restart-bid:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.leading-team {
+  color: var(--success);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.btn-bid {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--success), #16a34a);
+  border: none; border-radius: 8px; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem; font-weight: 700;
+  letter-spacing: 1px; color: #fff;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-bid:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(34,197,94,0.35); }
+.btn-bid:disabled { cursor: not-allowed; opacity: 0.5; transform: none; box-shadow: none; }
+
+.btn-unsold {
+  padding: 9px 16px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 8px; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem; font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--danger);
+  transition: all 0.2s;
+  width: 100%;
+}
+.btn-unsold:hover { background: rgba(239,68,68,0.2); }
+
+/* Queue */
+.auction-queue {
+  border-radius: var(--radius-lg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.queue-header {
+  padding: 18px 20px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.queue-filters {
+  display: flex; gap: 4px; padding: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.queue-tier-filter {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+}
+
+.q-filter {
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px; cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem; font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+.q-filter:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+.q-filter.active { background: rgba(255,107,0,0.12); color: var(--orange); border-color: var(--border-accent); }
+
+.queue-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 500px;
+}
+
+.queue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.025);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.queue-item:hover { background: rgba(255,107,0,0.07); border-color: var(--border-accent); }
+.queue-item.active-bid { background: rgba(255,107,0,0.12); border-color: var(--orange); }
+.queue-item-disabled { cursor: not-allowed; opacity: 0.55; }
+.queue-item-disabled:hover { background: rgba(255,255,255,0.025); border-color: var(--border); }
+
+.qi-name {
+  flex: 1;
+  font-weight: 500; font-size: 0.88rem;
+}
+
+.qi-cat { font-size: 0.72rem; }
+.qi-status { font-size: 0.7rem; }
+
+/* ======= TEAM COLOR DOT ======= */
+.color-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+@media (max-width: 1100px) {
+  .obp-profile { align-items: flex-start; gap: 14px; }
+  .obp-photo, .obp-photo-placeholder { width: 96px; height: 120px; }
+  .obp-name { font-size: 2.2rem; }
+  .auction-layout {
+    grid-template-columns: 1fr;
+  }
+  .auction-queue { max-height: 300px; }
+  .queue-list { max-height: 220px; }
+}

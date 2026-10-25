@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard – KKPL Auction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/admin.css"/>
+</head>
+<body class="app-page">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🏉</div>
+      <div>
+        <div class="logo-title">KKPL</div>
+        <div class="logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="#" onclick="showSection('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a class="nav-item" href="#" onclick="showSection('teams')">
+        <span class="nav-icon">🏆</span> Teams
+      </a>
+      <a class="nav-item" href="#" onclick="showSection('players')">
+        <span class="nav-icon">🧍</span> Players
+      </a>
+      <a class="nav-item" href="#" onclick="showSection('auction')">
+        <span class="nav-icon">🔨</span> Live Auction
+      </a>
+      <a class="nav-item" href="#" onclick="showSection('results')">
+        <span class="nav-icon">📋</span> Auction Results
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-right">
+        <span class="admin-badge">👤 Admin</span>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <section class="section active" id="section-dashboard">
+      <h2 class="section-heading">Season Overview</h2>
+      <div class="stats-grid" id="stats-grid">
+        <!-- dynamically filled -->
+      </div>
+      <div class="two-col">
+        <div class="card glass">
+          <div class="card-header">🏆 Registered Teams</div>
+          <div id="dash-teams-list" class="mini-list"></div>
+        </div>
+        <div class="card glass">
+          <div class="card-header">🔨 Recent Bids</div>
+          <div id="dash-bids-list" class="mini-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEAMS -->
+    <section class="section" id="section-teams">
+      <div class="section-top">
+        <h2 class="section-heading">Manage Teams</h2>
+        <button class="btn-primary" onclick="openTeamModal()">+ Add Team</button>
+      </div>
+      <div class="table-wrap glass">
+        <table class="data-table" id="teams-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Team Name</th>
+              <th>City</th>
+              <th>Coach</th>
+              <th>Team Email</th>
+              <th>Purse / Budget</th>
+              <th>Spent</th>
+              <th>Remaining</th>
+              <th>Players</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teams-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PLAYERS -->
+    <section class="section" id="section-players">
+      <div class="section-top">
+        <h2 class="section-heading">Player Pool</h2>
+        <button class="btn-primary" onclick="openPlayerModal()">+ Add Player</button>
+      </div>
+      <div class="filter-row">
+        <select id="filter-category" onchange="renderPlayers()">
+          <option value="">All Playing Roles</option>
+          <option value="Raider">Raider</option>
+          <option value="Defender">Defender</option>
+          <option value="All-Rounder">All-Rounder</option>
+        </select>
+        <select id="filter-auction-tier" onchange="renderPlayers()">
+          <option value="">All Auction Tiers</option>
+          <option value="A">Tier A — Top</option>
+          <option value="B">Tier B — Middle</option>
+          <option value="C">Tier C — Developing</option>
+        </select>
+        <select id="filter-status" onchange="renderPlayers()">
+          <option value="">All Status</option>
+          <option value="Available">Available</option>
+          <option value="Sold">Sold</option>
+          <option value="Unsold">Unsold</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="🔍 Search player..." oninput="renderPlayers()"/>
+      </div>
+      <div class="table-wrap glass">
+        <table class="data-table" id="players-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Playing Role</th>
+              <th>Auction Tier</th>
+              <th>Base Price (₹)</th>
+              <th>Age</th>
+              <th>Nationality</th>
+              <th>Status</th>
+              <th>Team</th>
+              <th>Sold Price (₹ L)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="players-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- AUCTION -->
+    <section class="section" id="section-auction">
+      <h2 class="section-heading">🔨 Live Auction Console</h2>
+      <div class="auction-layout">
+        <!-- Current Player on Block -->
+        <div class="auction-player-card glass">
+          <div class="on-block-label">ON THE BLOCK</div>
+          <div id="auction-player-display">
+            <div class="no-player-msg">Select a player to start auction</div>
+          </div>
+          <div class="bid-controls" id="bid-controls" style="display:none;">
+            <div class="current-bid-row">
+              <span class="bid-label">Current Bid:</span>
+              <span class="current-bid-val" id="current-bid-val">₹0L</span>
+            </div>
+            <div class="leading-team" id="leading-team">No team has bid yet</div>
+            <label class="bid-increment-control" for="bid-increment">
+              <span>Bid increase (₹)</span>
+              <input type="number" id="bid-increment" value="1000" min="1" step="1" inputmode="numeric"/>
+            </label>
+            <div class="bid-increment-hint">Each team button adds this amount to the current bid.</div>
+            <div class="bid-team-buttons" id="bid-team-buttons" aria-label="Place a bid for a team"></div>
+            <div class="bid-correction-actions">
+              <button type="button" class="btn-undo-bid" id="undo-bid-button" onclick="undoLastBid()">↶ Undo Last Bid</button>
+              <button type="button" class="btn-restart-bid" id="restart-bid-button" onclick="restartBidding()">↻ Restart Bidding</button>
+            </div>
+            <button class="btn-bid" onclick="finalizeAuction()">✅ SOLD TO LEADING TEAM</button>
+            <button class="btn-unsold" onclick="markUnsold()">❌ UNSOLD</button>
+          </div>
+        </div>
+
+        <!-- Player Queue -->
+        <div class="auction-queue glass">
+          <div class="queue-header">Player Queue</div>
+          <div class="queue-filters">
+            <select id="auction-tier-filter" class="queue-tier-filter" aria-label="Filter players by auction tier" onchange="setAuctionTierFilter(this.value)">
+              <option value="">All Tiers</option>
+              <option value="A">Tier A — Top</option>
+              <option value="B">Tier B — Middle</option>
+              <option value="C">Tier C — Developing</option>
+            </select>
+            <button class="q-filter" onclick="filterQueue('all', this)">Available + Unsold</button>
+            <button class="q-filter active" onclick="filterQueue('Available', this)">Available</button>
+            <button class="q-filter" onclick="filterQueue('Sold', this)">Sold</button>
+            <button class="q-filter" onclick="filterQueue('Unsold', this)">Unsold</button>
+          </div>
+          <div id="auction-queue-list" class="queue-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="section" id="section-results">
+      <h2 class="section-heading">📋 Auction Results</h2>
+      <div class="results-filter">
+        <select id="results-team-filter" onchange="renderResults()">
+          <option value="">All Teams</option>
+        </select>
+        <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="table-wrap glass">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Player</th><th>Category</th><th>Nationality</th><th>Team</th><th>Base Price</th><th>Sold Price</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal: Add/Edit Team -->
+  <div class="modal-overlay" id="team-modal">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3 id="team-modal-title">Add New Team</h3>
+        <button class="modal-close" onclick="closeModal('team-modal')">✕</button>
+      </div>
+      <form id="team-form" onsubmit="saveTeam(event)">
+        <input type="hidden" id="team-id"/>
+        <div class="form-grid">
+          <div class="field">
+            <label>Team Name *</label>
+            <input type="text" id="t-name" placeholder="e.g. Patna Pirates" required/>
+          </div>
+          <div class="field">
+            <label>City *</label>
+            <input type="text" id="t-city" placeholder="e.g. Patna" required/>
+          </div>
+          <div class="field">
+            <label>Coach Name</label>
+            <input type="text" id="t-coach" placeholder="e.g. Ram Mehar Singh"/>
+          </div>
+          <div class="field">
+            <label>Team Color</label>
+            <input type="color" id="t-color" value="#ff6600"/>
+          </div>
+          <div class="field">
+            <label>Email *</label>
+            <input type="email" id="t-email" placeholder="team@kkpl.com" required/>
+          </div>
+          <div class="field">
+            <label>Password (required for new teams)</label>
+            <input type="password" id="t-password" placeholder="Set team password" minlength="8" required autocomplete="new-password"/>
+          </div>
+          <div class="field full-width">
+            <label>Purse / Budget *</label>
+            <div style="display:flex;gap:8px">
+              <input type="number" id="t-budget" placeholder="e.g. 4" min="0" step="any" required style="flex:2"/>
+              <select id="t-budget-unit" style="flex:1;padding:11px 10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-family:Inter,sans-serif;font-size:0.9rem;outline:none">
+                <option value="Cr">₹ Crores</option>
+                <option value="L">₹ Lakhs</option>
+                <option value="Rs">₹ Rupees</option>
+              </select>
+            </div>
+            <div style="margin-top:6px;font-size:0.75rem;color:var(--text-muted)" id="budget-preview">Enter amount and select unit</div>
+          </div>
+          <div class="field">
+            <label>Sponsor</label>
+            <input type="text" id="t-sponsor" placeholder="e.g. Star Sports"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('team-modal')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Team</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Player -->
+  <div class="modal-overlay" id="player-modal">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3 id="player-modal-title">Add New Player</h3>
+        <button class="modal-close" onclick="closeModal('player-modal')">✕</button>
+      </div>
+      <form id="player-form" onsubmit="savePlayer(event)">
+        <input type="hidden" id="player-id"/>
+        <div class="form-grid">
+          <div class="field">
+            <label>Player Name *</label>
+            <input type="text" id="p-name" placeholder="e.g. Pardeep Narwal" required/>
+          </div>
+          <div class="field">
+            <label>Age *</label>
+            <input type="number" id="p-age" placeholder="e.g. 26" min="16" max="45" required/>
+          </div>
+          <div class="field">
+            <label>Nationality</label>
+            <input type="text" id="p-nationality" placeholder="e.g. India"/>
+          </div>
+          <div class="field">
+            <label>Playing Role *</label>
+            <select id="p-category" required>
+              <option value="">Select Playing Role</option>
+              <option value="Raider">Raider</option>
+              <option value="Defender">Defender</option>
+              <option value="All-Rounder">All-Rounder</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Auction Tier *</label>
+            <select id="p-auction-tier" required>
+              <option value="">Select Auction Tier</option>
+              <option value="A">A — Top Players</option>
+              <option value="B">B — Middle Tier</option>
+              <option value="C">C — Developing Tier</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Base Price (₹) *</label>
+            <div style="display:flex;gap:8px">
+              <input type="number" id="p-base" placeholder="e.g. 50000" min="0.01" step="any" required style="flex:2"/>
+              <select id="p-base-unit" style="flex:1;padding:11px 10px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-family:Inter,sans-serif;font-size:0.9rem;outline:none">
+                <option value="Rs" selected>₹ Rupees</option>
+                <option value="L">₹ Lakhs</option>
+                <option value="Cr">₹ Crores</option>
+              </select>
+            </div>
+            <div style="margin-top:6px;font-size:0.75rem;color:var(--text-muted)" id="player-base-preview">Enter amount in rupees</div>
+          </div>
+          <div class="field full-width">
+            <label for="p-photo">Player Photo</label>
+            <input type="file" id="p-photo" accept="image/jpeg,image/png,image/webp"/>
+            <div class="photo-upload-hint">JPG, PNG, or WebP; maximum 2 MB. Leave empty to keep the existing photo.</div>
+            <img id="p-photo-preview" class="player-photo-preview" alt="Selected player photo preview" hidden/>
+          </div>
+          <div class="field">
+            <label>Previous Team</label>
+            <input type="text" id="p-prev-team" placeholder="e.g. UP Yoddha"/>
+          </div>
+          <div class="field full-width">
+            <label>Skills / Notes</label>
+            <textarea id="p-skills" placeholder="Strong raider, Super tackle specialist..." rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('player-modal')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Player</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <div class="auction-result-overlay" id="auction-result-overlay" role="dialog" aria-modal="true" aria-labelledby="auction-result-title" hidden>
+    <div class="auction-result-card">
+      <button class="auction-result-close" type="button" aria-label="Close announcement" onclick="closeAuctionOutcome()">✕</button>
+      <div class="auction-result-photo-wrap">
+        <img class="auction-result-photo" id="auction-result-photo" alt="" hidden/>
+        <div class="auction-result-photo-placeholder" id="auction-result-photo-placeholder" aria-hidden="true">🏉</div>
+        <div class="auction-result-stamp" aria-hidden="true">✓</div>
+      </div>
+      <div class="auction-result-copy">
+        <div class="auction-result-kicker" id="auction-result-kicker"></div>
+        <h2 class="auction-result-title" id="auction-result-title"></h2>
+        <div class="auction-result-player" id="auction-result-player"></div>
+        <div class="auction-result-team" id="auction-result-team"></div>
+        <div class="auction-result-price" id="auction-result-price" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

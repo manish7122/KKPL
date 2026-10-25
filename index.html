@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KKPL – Kabaddi Auction System</title>
+  <meta name="description" content="Official Kabaddi Auction Portal – Manage teams, players, and live bidding for the KKPL season." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="login-page">
+
+  <!-- Animated Background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="bg-grid"></div>
+
+  <!-- Header -->
+  <header class="login-header">
+    <div class="logo-wrap">
+      <div class="logo-icon">🏉</div>
+      <div>
+        <div class="logo-title">KKPL</div>
+        <div class="logo-sub">Kabaddi Auction League</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login Card -->
+  <main class="login-main">
+    <div class="login-hero">
+      <h1 class="hero-heading">OFFICIAL<br/><span class="accent">AUCTION</span><br/>PORTAL</h1>
+      <p class="hero-sub">The ultimate platform to manage bids, rosters, and team squads – PKL style.</p>
+    </div>
+
+    <div class="login-card glass">
+      <div class="card-tabs">
+        <button class="tab-btn active" id="tab-admin" onclick="switchTab('admin')">Admin Login</button>
+        <button class="tab-btn" id="tab-team" onclick="switchTab('team')">Team Login</button>
+      </div>
+
+      <!-- Admin Login Form -->
+      <form id="form-admin" class="login-form active" onsubmit="adminLogin(event)">
+        <h2 class="form-title">Admin Access</h2>
+        <p class="form-desc">Login to manage auction, teams & players</p>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="admin-email" placeholder="admin@kkpl.com" required autocomplete="username"/>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="admin-password" placeholder="••••••••" required autocomplete="current-password"/>
+        </div>
+        <div class="error-msg" id="admin-error"></div>
+        <button type="submit" class="btn-primary">Login as Admin</button>
+      </form>
+
+      <!-- Team Login Form -->
+      <form id="form-team" class="login-form" onsubmit="teamLogin(event)">
+        <h2 class="form-title">Team Portal</h2>
+        <p class="form-desc">Login to view your squad & auction status</p>
+        <div class="field">
+          <label>Team Email</label>
+          <input type="email" id="team-email" placeholder="team@kkpl.com" required autocomplete="username"/>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="team-password" placeholder="••••••••" required autocomplete="current-password"/>
+        </div>
+        <div class="error-msg" id="team-error"></div>
+        <button type="submit" class="btn-primary">Enter Team Portal</button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="login-footer">
+    <span>© 2026 KKPL – Kabaddi Auction League &nbsp;|&nbsp; All Rights Reserved</span>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

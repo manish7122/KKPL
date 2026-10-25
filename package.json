@@ -1,0 +1,22 @@
+{
+  "name": "kkpl-auction",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KKPL Kabaddi Auction System",
+  "scripts": {
+    "build": "node --check server.js && node --check api/[...path].js && node --check js/data.js && node --check js/auth.js && node --check js/admin.js && node --check js/team.js",
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "pg": "^8.13.1"
+  }
+}
