@@ -4,7 +4,7 @@
   "private": true,
   "description": "KKPL Kabaddi Auction System",
   "scripts": {
-    "build": "next build && node --check server.js && node --check api/[...path].js && node --check public/js/data.js && node --check public/js/auth.js && node --check public/js/admin.js && node --check public/js/team.js",
+    "build": "next build && node --check server.js && node --check pages/api/[...path].js && node --check public/js/data.js && node --check public/js/auth.js && node --check public/js/admin.js && node --check public/js/team.js",
     "dev": "node server.js",
     "start": "node server.js"
   },

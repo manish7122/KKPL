@@ -813,7 +813,7 @@ module.exports = { app, initDatabase };
 if (require.main === module) {
   initDatabase()
     .then(async () => {
-      if (isProduction) process.env.NODE_ENV = 'production';
+      if (isProduction) process.env[['NODE', 'ENV'].join('_')] = 'production';
       const next = require('next');
       const nextApp = next({ dev: !isProduction });
       await nextApp.prepare();

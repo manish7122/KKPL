@@ -14,11 +14,12 @@ export default async function LegacyPage({ fileName, styles, scripts }) {
   }
 
   const bodyClass = body[1].match(/\bclass=["']([^"']*)["']/i)?.[1] || '';
+  const content = body[2].replace(/<script\b(?=[^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/gi, '');
 
   return (
     <LegacyRenderer
       bodyClass={bodyClass}
-      content={body[2]}
+      content={content}
       styles={['/css/style.css', ...styles]}
       scripts={scripts}
       fontStylesheet={fontStylesheet}

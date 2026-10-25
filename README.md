@@ -27,7 +27,7 @@ The frontend uses the **Next.js App Router** (`/`, `/admin`, `/team`). The exist
 
 ## Deploying to Vercel with Neon
 
-1. Push the project to a Git provider and import it into Vercel. Vercel builds and serves the Next.js application and its assets. Requests to `/api/*` use `api/[...path].js` to reach the existing Express API.
+1. Push the project to a Git provider and import it into Vercel. Vercel builds and serves the Next.js application and its assets. Requests to `/api/*` use the Next.js Pages API catch-all at `pages/api/[...path].js`, which forwards them to the existing Express API.
 2. In Vercel project settings, add `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` for Production (and Preview if needed). Use Neon’s pooled connection string for `DATABASE_URL`; keep its SSL requirement. Set a unique session secret of at least 32 characters and an admin password of at least 12 characters.
 3. Deploy. The API initializes the database schema on its first invocation. Keep the same Neon database when redeploying so teams, players, and sessions persist.
 
