@@ -1,5 +1,7 @@
 # KKPL Auction System
 
+The frontend uses the **Next.js App Router** (`/`, `/admin`, `/team`). The existing Express API, PostgreSQL data layer, and session authentication remain in place.
+
 ## Requirements
 
 - Node.js 20 or newer (includes npm)
@@ -21,15 +23,15 @@
 
 6. Open <http://localhost:3000>. The server creates the tables and demo data on its first run.
 
-`npm run build` checks the server and browser JavaScript files for syntax errors. This project does not bundle or compile frontend assets, so the command does not create a separate output directory.
+`npm run build` builds the Next.js application. `npm run dev` starts the Next.js development server through the Express server so the existing API and Next.js pages share the same port.
 
 ## Deploying to Vercel with Neon
 
-1. Push the project to a Git provider and import it into Vercel. Vercel serves the HTML, CSS, and browser JavaScript as static files, and routes `/api/*` requests through `api/[...path].js` to the Express app.
+1. Push the project to a Git provider and import it into Vercel. Vercel builds and serves the Next.js application and its assets. Requests to `/api/*` use `api/[...path].js` to reach the existing Express API.
 2. In Vercel project settings, add `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` for Production (and Preview if needed). Use Neon’s pooled connection string for `DATABASE_URL`; keep its SSL requirement. Set a unique session secret of at least 32 characters and an admin password of at least 12 characters.
 3. Deploy. The API initializes the database schema on its first invocation. Keep the same Neon database when redeploying so teams, players, and sessions persist.
 
-The Vercel entry point initializes the database before handling API requests. `npm start` and `npm run dev` continue to run the Express server locally.
+The Vercel API entry point initializes the database before handling API requests. Locally, `npm start` runs the production Next.js app with the Express API.
 
 The admin email is set by `ADMIN_EMAIL` in `.env`. Demo team accounts are:
 

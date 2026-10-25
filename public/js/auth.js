@@ -22,7 +22,7 @@ async function login(e, type) {
       body: JSON.stringify({ email, password, type })
     });
     setSession(result.user);
-    window.location.href = type === 'admin' ? 'admin.html' : 'team.html';
+    window.location.href = type === 'admin' ? '/admin' : '/team';
   } catch (error) {
     errorEl.textContent = error.message;
     setTimeout(() => { errorEl.textContent = ''; }, 4000);
@@ -35,7 +35,7 @@ function teamLogin(e) { return login(e, 'team'); }
 (async function redirectSignedInUser() {
   try {
     const user = await initData();
-    if (user) window.location.href = user.type === 'admin' ? 'admin.html' : 'team.html';
+    if (user) window.location.href = user.type === 'admin' ? '/admin' : '/team';
   } catch (error) {
     showRequestError(error);
   }

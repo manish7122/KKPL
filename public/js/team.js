@@ -320,7 +320,7 @@ function hexToRgb(hex) {
   try {
     const user = await initData();
     if (!user || user.type !== 'team') {
-      window.location.href = 'index.html';
+      window.location.href = '/';
       return;
     }
     await refreshData();

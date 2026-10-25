@@ -4,8 +4,8 @@
   "private": true,
   "description": "KKPL Kabaddi Auction System",
   "scripts": {
-    "build": "node --check server.js && node --check api/[...path].js && node --check js/data.js && node --check js/auth.js && node --check js/admin.js && node --check js/team.js",
-    "dev": "node --watch server.js",
+    "build": "next build && node --check server.js && node --check api/[...path].js && node --check public/js/data.js && node --check public/js/auth.js && node --check public/js/admin.js && node --check public/js/team.js",
+    "dev": "node server.js",
     "start": "node server.js"
   },
   "engines": {
@@ -17,6 +17,12 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "pg": "^8.13.1"
+    "next": "^15.5.6",
+    "pg": "^8.13.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.31"
   }
 }

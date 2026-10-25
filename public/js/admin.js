@@ -735,7 +735,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   try {
     const user = await initData();
     if (!user || user.type !== 'admin') {
-      window.location.href = 'index.html';
+      window.location.href = '/';
       return;
     }
     await refreshData();

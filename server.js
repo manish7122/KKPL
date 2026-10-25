@@ -31,8 +31,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL.trim().toLowerCase();
 const adminPasswordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
 const MAX_PLAYER_PHOTO_BYTES = 2 * 1024 * 1024;
+const isProduction = process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
 
-if (process.env.NODE_ENV === 'production') {
+if (isProduction) {
   app.set('trust proxy', 1);
 }
 
@@ -60,7 +61,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
     maxAge: 8 * 60 * 60 * 1000
   }
 }));
@@ -788,7 +789,15 @@ app.get('/api/team/portal', requireRole('team'), asyncRoute(async (req, res) => 
   res.json({ team, players: await listPlayers(), teams, ...auctionSnapshot });
 }));
 
-app.use(express.static(path.join(__dirname)));
+app.get(['/index.html', '/admin.html', '/team.html'], (req, res) => {
+  const routes = {
+    '/index.html': '/',
+    '/admin.html': '/admin',
+    '/team.html': '/team'
+  };
+  res.redirect(308, routes[req.path]);
+});
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((error, req, res, next) => {
   console.error(error);
@@ -803,7 +812,15 @@ module.exports = { app, initDatabase };
 
 if (require.main === module) {
   initDatabase()
-    .then(() => app.listen(PORT, () => console.log(`KKPL is running at http://localhost:${PORT}`)))
+    .then(async () => {
+      if (isProduction) process.env.NODE_ENV = 'production';
+      const next = require('next');
+      const nextApp = next({ dev: !isProduction });
+      await nextApp.prepare();
+      const handle = nextApp.getRequestHandler();
+      app.all('*', (req, res) => handle(req, res));
+      app.listen(PORT, () => console.log(`KKPL is running at http://localhost:${PORT}`));
+    })
     .catch((error) => {
       console.error('Could not initialize the database:', error);
       process.exitCode = 1;

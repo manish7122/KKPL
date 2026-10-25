@@ -248,7 +248,7 @@ async function logout() {
   try {
     await apiRequest('/api/auth/logout', { method: 'POST' });
     clearSession();
-    window.location.href = 'index.html';
+    window.location.href = '/';
   } catch (error) {
     showRequestError(error);
   }
