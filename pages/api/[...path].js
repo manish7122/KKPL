@@ -11,7 +11,13 @@ let databaseReady;
 
 export default async function handler(req, res) {
   try {
-    databaseReady = databaseReady || initDatabase();
+    if (!databaseReady) {
+      const initialization = initDatabase();
+      databaseReady = initialization;
+      initialization.catch(() => {
+        if (databaseReady === initialization) databaseReady = undefined;
+      });
+    }
     await databaseReady;
     await new Promise((resolve) => {
       res.once('finish', resolve);

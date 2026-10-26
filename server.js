@@ -490,8 +490,19 @@ async function initDatabase() {
     )
   `);
   await pool.query("ALTER TABLE match_score_events ADD COLUMN IF NOT EXISTS period TEXT NOT NULL DEFAULT 'regular'");
-  await pool.query('ALTER TABLE match_score_events DROP CONSTRAINT IF EXISTS match_score_events_points_check');
-  await pool.query('ALTER TABLE match_score_events ADD CONSTRAINT match_score_events_points_check CHECK (points >= 0)');
+  const constraintClient = await pool.connect();
+  try {
+    await constraintClient.query('BEGIN');
+    await constraintClient.query('SELECT pg_advisory_xact_lock($1)', [746210091]);
+    await constraintClient.query('ALTER TABLE match_score_events DROP CONSTRAINT IF EXISTS match_score_events_points_check');
+    await constraintClient.query('ALTER TABLE match_score_events ADD CONSTRAINT match_score_events_points_check CHECK (points >= 0)');
+    await constraintClient.query('COMMIT');
+  } catch (error) {
+    await constraintClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    constraintClient.release();
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS match_score_migrations (
       version INTEGER PRIMARY KEY,
@@ -554,33 +565,34 @@ async function initDatabase() {
       )
   `);
 
-  const count = await pool.query('SELECT COUNT(*)::int AS total FROM teams');
-  if (count.rows[0].total === 0) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+  const seedClient = await pool.connect();
+  try {
+    await seedClient.query('BEGIN');
+    await seedClient.query('SELECT pg_advisory_xact_lock($1)', [746210092]);
+    const count = await seedClient.query('SELECT COUNT(*)::int AS total FROM teams');
+    if (count.rows[0].total === 0) {
       for (const team of demoTeams) {
         const passwordHash = await bcrypt.hash(team.password, 12);
-        await client.query(
+        await seedClient.query(
           `INSERT INTO teams (id, name, city, coach, color, email, password_hash, budget_lakhs, sponsor)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
           [team.id, team.name, team.city, team.coach, team.color, team.email, passwordHash, team.budgetLakhs, team.sponsor]
         );
       }
       for (const player of demoPlayers) {
-        await client.query(
+        await seedClient.query(
           `INSERT INTO players (id, name, age, nationality, category, base_price, prev_team, skills)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [player.id, player.name, player.age, player.nationality, player.category, player.basePrice, player.prevTeam, player.skills]
         );
       }
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
     }
+    await seedClient.query('COMMIT');
+  } catch (error) {
+    await seedClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    seedClient.release();
   }
 }
 
