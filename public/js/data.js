@@ -270,6 +270,14 @@ async function restartAuctionBidding(playerId) {
   await refreshData();
 }
 
+async function cancelAuction(playerId) {
+  await apiRequest('/api/auction/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ playerId })
+  });
+  await refreshData();
+}
+
 async function sellPlayer(playerId) {
   await apiRequest('/api/auction/sell', {
     method: 'POST',

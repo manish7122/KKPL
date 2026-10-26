@@ -5,7 +5,7 @@
 
 let currentAuctionPlayerId = null;
 let queueFilter = 'Available';
-let queueTierFilter = '';
+let queueRoleFilter = '';
 let playerPhotoPreviewUrl = null;
 
 // ---- Navigation ----
@@ -198,8 +198,8 @@ function filterQueue(status, btn) {
   renderQueue();
 }
 
-function setAuctionTierFilter(tier) {
-  queueTierFilter = tier;
+function setAuctionRoleFilter(role) {
+  queueRoleFilter = role;
   renderQueue();
 }
 
@@ -208,7 +208,7 @@ function renderQueue() {
   const availablePlayersRemain = allPlayers.some(p => p.status === 'Available');
   let players = allPlayers.filter(p => {
     const matchesStatus = queueFilter === 'all' ? p.status !== 'Sold' : p.status === queueFilter;
-    return matchesStatus && (!queueTierFilter || p.auctionTier === queueTierFilter);
+    return matchesStatus && (!queueRoleFilter || p.category === queueRoleFilter);
   });
 
   const list = document.getElementById('auction-queue-list');
@@ -422,6 +422,23 @@ async function restartBidding() {
   showToast(`↻ Bidding restarted at ${formatPrice(player.basePrice, 'Rs')}`);
   renderQueue();
   showPlayerOnBlock(currentAuctionPlayerId);
+}
+
+async function cancelCurrentAuction() {
+  if (!currentAuctionPlayerId) return;
+  const player = getPlayerById(currentAuctionPlayerId);
+  if (!player) return;
+  if (!confirm(`Cancel the auction for ${player.name} and return them to Available?\n\nAll bids for this auction will be removed.`)) return;
+  try {
+    await cancelAuction(player.id);
+  } catch (error) {
+    showRequestError(error);
+    return;
+  }
+  currentAuctionPlayerId = null;
+  renderQueue();
+  showPlayerOnBlock(null);
+  showToast(`${player.name} returned to Available.`);
 }
 
 async function markUnsold() {
@@ -690,10 +707,10 @@ function handlePlayerPhotoChange() {
     else document.getElementById('p-photo-preview').hidden = true;
     return;
   }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
     input.value = '';
     document.getElementById('p-photo-preview').hidden = true;
-    showToast('❌ Choose a JPG, PNG, or WebP photo smaller than 2 MB.', true);
+    showToast('❌ Choose a JPG, PNG, or WebP photo no larger than 5 MB.', true);
     return;
   }
   playerPhotoPreviewUrl = URL.createObjectURL(file);

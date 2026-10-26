@@ -20,8 +20,8 @@ export default function PlayerRegistrationPage() {
       const photoFile = form.elements.photo.files[0];
       if (!photoFile) throw new Error('Please choose a player photo.');
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(photoFile.type) ||
-          photoFile.size === 0 || photoFile.size > 2 * 1024 * 1024) {
-        throw new Error('Choose a JPG, PNG, or WebP photo smaller than 2 MB.');
+          photoFile.size === 0 || photoFile.size > 5 * 1024 * 1024) {
+        throw new Error('Choose a JPG, PNG, or WebP photo no larger than 5 MB.');
       }
       values.photoData = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -65,16 +65,16 @@ export default function PlayerRegistrationPage() {
         <form className="player-registration-form" onSubmit={submitRegistration}>
           <label>
             Player name *
-            <input name="name" type="text" autoComplete="name" maxLength="100" required />
+            <input name="name" type="text" autoComplete="name" maxLength="100" required suppressHydrationWarning />
           </label>
           <div className="player-registration-row">
             <label>
               Age *
-              <input name="age" type="number" min="16" max="45" step="1" required />
+              <input name="age" type="number" min="16" max="45" step="1" required suppressHydrationWarning />
             </label>
             <label>
               Playing role *
-              <select name="category" required defaultValue="">
+              <select name="category" required defaultValue="" suppressHydrationWarning>
                 <option value="" disabled>Select role</option>
                 <option value="Raider">Raider</option>
                 <option value="Defender">Defender</option>
@@ -84,25 +84,25 @@ export default function PlayerRegistrationPage() {
           </div>
           <label>
             Nationality
-            <input name="nationality" type="text" autoComplete="country-name" maxLength="80" />
+            <input name="nationality" type="text" autoComplete="country-name" maxLength="80" suppressHydrationWarning />
           </label>
           <label>
-            Player photo * (JPG, PNG, or WebP; max 2 MB)
-            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+            Player photo * (JPG, PNG, or WebP; max 5 MB)
+            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp" required suppressHydrationWarning />
           </label>
           <label>
             Previous team
-            <input name="prevTeam" type="text" maxLength="120" />
+            <input name="prevTeam" type="text" maxLength="120" suppressHydrationWarning />
           </label>
           <label>
             Skills and playing experience
-            <textarea name="skills" rows="4" maxLength="500" />
+            <textarea name="skills" rows="4" maxLength="500" suppressHydrationWarning />
           </label>
           <label className="player-registration-trap" aria-hidden="true">
             Website
-            <input name="website" type="text" tabIndex="-1" autoComplete="off" />
+            <input name="website" type="text" tabIndex="-1" autoComplete="off" suppressHydrationWarning />
           </label>
-          <button type="submit" disabled={submitting}>
+          <button type="submit" disabled={submitting} suppressHydrationWarning>
             {submitting ? 'Submitting...' : 'Submit Player Details'}
           </button>
           <p className={`player-registration-message${error ? ' is-error' : ''}`} aria-live="polite">

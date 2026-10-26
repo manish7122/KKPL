@@ -49,11 +49,13 @@ When adding a player, assign an auction tier: **A** for top players, **B** for m
 
 ## Public player registration
 
-Admins can open or copy the public `/player-registration` link from Auction Results and share it with players. The form asks for a required player photo (JPG, PNG, or WebP up to 2 MB), name, age, nationality, playing role, previous team, and skills. Submissions are added immediately as available Tier B players with a ₹1,000 base price; admins can edit those auction settings and player details in the player list. The public endpoint validates submissions and limits repeated requests.
+Admins can open or copy the public `/player-registration` link from Auction Results and share it with players. The form asks for a required player photo (JPG, PNG, or WebP up to 5 MB), name, age, nationality, playing role, previous team, and skills. Submissions are added immediately as available Tier B players with a ₹1,000 base price; admins can edit those auction settings and player details in the player list. The public endpoint validates submissions and limits repeated requests.
 
 ## Auction bid increments
 
 During live bidding, each team button shows the automatic increase that will be added to the current bid: ₹50 below ₹2,000; ₹100 from ₹2,000; ₹200 from ₹4,000; ₹300 from ₹7,000; ₹400 from ₹10,000; ₹450 from ₹13,000; ₹500 from ₹15,000; ₹550 from ₹18,000; ₹600 from ₹20,000; ₹700 from ₹25,000; ₹800 from ₹30,000; ₹900 from ₹35,000; and ₹1,000 from ₹40,000. The server checks each bid against the same schedule.
+
+Admins can cancel the active auction to remove its bids and return the player to the **Available** queue without marking them unsold.
 
 ## Match schedule and scorecards
 

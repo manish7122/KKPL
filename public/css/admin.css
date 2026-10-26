@@ -311,7 +311,8 @@
 }
 
 .btn-undo-bid,
-.btn-restart-bid {
+.btn-restart-bid,
+.btn-cancel-auction {
   flex: 1;
   min-width: 150px;
   padding: 9px 12px;
@@ -344,6 +345,18 @@
 .btn-restart-bid:hover:not(:disabled) {
   background: rgba(239,68,68,0.18);
   border-color: var(--danger);
+}
+
+.btn-cancel-auction {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+}
+
+.btn-cancel-auction:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.1);
+  border-color: var(--text-muted);
 }
 
 .btn-undo-bid:disabled,

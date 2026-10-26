@@ -178,6 +178,7 @@
             <div class="bid-correction-actions">
               <button type="button" class="btn-undo-bid" id="undo-bid-button" onclick="undoLastBid()">↶ Undo Last Bid</button>
               <button type="button" class="btn-restart-bid" id="restart-bid-button" onclick="restartBidding()">↻ Restart Bidding</button>
+              <button type="button" class="btn-cancel-auction" onclick="cancelCurrentAuction()">✕ Cancel Auction & Return Player</button>
             </div>
             <button class="btn-bid" onclick="finalizeAuction()">✅ SOLD TO LEADING TEAM</button>
             <button class="btn-unsold" onclick="markUnsold()">❌ UNSOLD</button>
@@ -188,11 +189,11 @@
         <div class="auction-queue glass">
           <div class="queue-header">Player Queue</div>
           <div class="queue-filters">
-            <select id="auction-tier-filter" class="queue-tier-filter" aria-label="Filter players by auction tier" onchange="setAuctionTierFilter(this.value)">
-              <option value="">All Tiers</option>
-              <option value="A">Tier A — Top</option>
-              <option value="B">Tier B — Middle</option>
-              <option value="C">Tier C — Developing</option>
+            <select id="auction-role-filter" class="queue-tier-filter" aria-label="Filter players by playing role" onchange="setAuctionRoleFilter(this.value)">
+              <option value="">All Playing Roles</option>
+              <option value="Raider">Raiders</option>
+              <option value="Defender">Defenders</option>
+              <option value="All-Rounder">All-Rounders</option>
             </select>
             <button class="q-filter" onclick="filterQueue('all', this)">Available + Unsold</button>
             <button class="q-filter active" onclick="filterQueue('Available', this)">Available</button>

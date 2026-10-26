@@ -30,7 +30,7 @@ const PgSession = connectPgSimple(session);
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL.trim().toLowerCase();
 const adminPasswordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
-const MAX_PLAYER_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PLAYER_PHOTO_BYTES = 5 * 1024 * 1024;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
 const playerRegistrationAttempts = new Map();
 
@@ -53,7 +53,7 @@ const demoPlayers = [
   { id: 'P_SANDEEP', name: 'Sandeep Narwal', age: 31, nationality: 'India', category: 'All-Rounder', basePrice: 75, prevTeam: 'Puneri Paltan', skills: 'Veteran all-rounder' }
 ];
 
-app.use(express.json({ limit: '3mb' }));
+app.use(express.json({ limit: '7mb' }));
 app.use(session({
   store: new PgSession({ pool, createTableIfMissing: true }),
   secret: process.env.SESSION_SECRET,
@@ -194,7 +194,7 @@ function parsePlayerPhoto(photoData) {
 
   const image = Buffer.from(match[2], 'base64');
   if (image.length === 0 || image.length > MAX_PLAYER_PHOTO_BYTES || image.toString('base64') !== match[2]) {
-    return { error: 'Player photos must be smaller than 2 MB.' };
+    return { error: 'Player photos must be 5 MB or smaller.' };
   }
 
   const isJpeg = match[1] === 'image/jpeg' && image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
@@ -919,6 +919,38 @@ app.post('/api/auction/restart-bidding', requireRole('admin'), asyncRoute(async 
       'UPDATE players SET current_bid=NULL, current_team_id=NULL WHERE id=$1',
       [playerId]
     );
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
+app.post('/api/auction/cancel', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { playerId } = req.body || {};
+  if (typeof playerId !== 'string') return res.status(400).json({ error: 'Select a player.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const stateResult = await client.query('SELECT player_id FROM auction_state WHERE id=1 FOR UPDATE');
+    if (!stateResult.rowCount || stateResult.rows[0].player_id !== playerId) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This player is no longer on the live auction block.' });
+    }
+    const playerResult = await client.query('SELECT status FROM players WHERE id=$1 FOR UPDATE', [playerId]);
+    if (!playerResult.rowCount || playerResult.rows[0].status !== 'Available') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Only the active auction player can be returned to Available.' });
+    }
+    await client.query('DELETE FROM auction_bid_history WHERE player_id=$1', [playerId]);
+    await client.query(
+      'UPDATE players SET status=\'Available\', team_id=NULL, sold_price=NULL, current_bid=NULL, current_team_id=NULL WHERE id=$1',
+      [playerId]
+    );
+    await client.query('UPDATE auction_state SET player_id=NULL WHERE id=1 AND player_id=$1', [playerId]);
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (error) {
