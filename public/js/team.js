@@ -364,10 +364,24 @@ function renderTeamMatches() {
                 <div class="match-card-header">
                   <div>
                     <span class="match-status match-status-${escapeHtml(match.status)}">${escapeHtml(status[0].toUpperCase() + status.slice(1))}</span>
+                    <span class="match-round-label">${escapeHtml(getMatchRoundLabel(match))}</span>
                     <h3>${escapeHtml(new Date(match.scheduledAt).toLocaleString())}</h3>
                     <p class="match-venue">${escapeHtml(match.venue || 'Venue to be announced')}</p>
                   </div>
                 </div>
+                ${match.toss ? `
+                  <p class="match-toss-summary">Toss: <strong>${escapeHtml(match.toss.winnerTeamName)}</strong> won and
+                    ${match.toss.decision === 'raid' ? 'elected to raid' : 'elected to choose court side'}.</p>
+                ` : ''}
+                ${match.tieBreak?.phase ? `
+                  <p class="match-tiebreak-summary">
+                    Super 5: <strong>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</strong>
+                    ${match.tieBreak.toss ? ` · Golden toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${escapeHtml(match.tieBreak.toss.decision)}.` : ''}
+                  </p>
+                ` : ''}
+                ${status === 'completed' ? `
+                  <p class="match-outcome">${escapeHtml(getMatchOutcome(match))}</p>
+                ` : ''}
                 ${status === 'completed' ? `
                   <button class="match-scoreboard match-score-toggle" type="button"
                     aria-expanded="false" aria-controls="team-match-details-${escapeHtml(match.id)}"

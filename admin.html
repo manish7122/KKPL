@@ -259,6 +259,15 @@
         <input type="hidden" id="match-id"/>
         <div class="form-grid">
           <div class="field">
+            <label for="match-round-type">Match Round *</label>
+            <select id="match-round-type" required>
+              <option value="league">League Match</option>
+              <option value="quarterfinal">Quarterfinal</option>
+              <option value="semifinal">Semifinal</option>
+              <option value="final">Final</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="match-home-team">Home Team *</label>
             <select id="match-home-team" required></select>
           </div>

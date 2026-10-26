@@ -837,12 +837,119 @@ function renderAdminMatches() {
       raid: 'Raid', tackle: 'Tackle', bonus: 'Bonus', all_out: 'All-out',
       technical: 'Technical / extra', legacy: 'Other (migrated)'
     }[event.type] || event.type);
+    const tossDecisionText = match.toss?.decision === 'raid' ? 'elected to raid' : 'elected to choose court side';
+    const rosterOptions = (teamId) => getPlayers()
+      .filter((player) => player.teamId === teamId)
+      .map((player) => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}</option>`)
+      .join('') || '<option value="">No players assigned to this team</option>';
+    const tieBreakPhase = match.tieBreak?.phase;
+    const tieBreakSummary = match.tieBreak?.phase ? `
+      <p class="match-tiebreak-summary">
+        Super 5: <strong>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</strong>
+        ${match.tieBreak.toss ? ` · Golden toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${escapeHtml(match.tieBreak.toss.decision)}.` : ''}
+      </p>
+    ` : '';
+    const liveScoringForm = match.status !== 'live' ? '' : tieBreakPhase === 'super5' ? `
+      <div class="match-tiebreak-panel">
+        <h4>Super 5 Tie-break — Raid ${match.tieBreak.raids + 1} of 10</h4>
+        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
+        <p>Next raid: <strong>${escapeHtml(getTeamById(match.tieBreak.expectedTeamId)?.name || home.name)}</strong></p>
+        <form class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
+          <input type="hidden" name="type" value="raid"/>
+          <label>Raiding team
+            <select name="teamId" required>
+              <option value="${escapeHtml(match.tieBreak.expectedTeamId)}">${escapeHtml(getTeamById(match.tieBreak.expectedTeamId)?.name || home.name)}</option>
+            </select>
+          </label>
+          <label>Raider
+            <select name="playerId" required>${rosterOptions(match.tieBreak.expectedTeamId)}</select>
+          </label>
+          <label>Raid points (0–7)
+            <input name="points" type="number" min="0" max="7" value="0" required/>
+          </label>
+          <button class="btn-primary" type="submit">Record Super 5 Raid</button>
+        </form>
+        ${match.tieBreak.raids === 10 && match.tieBreak.homeScore !== match.tieBreak.awayScore
+          ? `<button class="btn-primary match-finish-tiebreak" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','completed')">Complete Match</button>`
+          : ''}
+      </div>
+    ` : tieBreakPhase === 'golden_toss' ? `
+      <div class="match-tiebreak-panel">
+        <h4>Super 5 tied — Golden Raid Toss</h4>
+        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
+        <form class="match-toss-form" onsubmit="saveGoldenToss(event,'${escapeHtml(match.id)}')">
+          <label>Toss winner
+            <select name="winnerTeamId" required>
+              <option value="">Select team</option>
+              <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
+              <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
+            </select>
+          </label>
+          <label>Toss winner chooses
+            <select name="decision" required>
+              <option value="">Choose raid or defend</option>
+              <option value="raid">Raid</option>
+              <option value="defend">Defend</option>
+            </select>
+          </label>
+          <button class="btn-primary" type="submit">Save Golden Raid Toss</button>
+        </form>
+      </div>
+    ` : tieBreakPhase === 'golden_raid' ? `
+      <div class="match-tiebreak-panel">
+        <h4>Golden Raid — One Deciding Raid</h4>
+        <p>Toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${match.tieBreak.toss.decision}.</p>
+        <p><strong>${escapeHtml(getTeamById(match.tieBreak.goldenRaidTeamId)?.name || '')}</strong> takes the only raid.</p>
+        <form class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
+          <input type="hidden" name="type" value="raid"/>
+          <label>Raiding team
+            <select name="teamId" required>
+              <option value="${escapeHtml(match.tieBreak.goldenRaidTeamId)}">${escapeHtml(getTeamById(match.tieBreak.goldenRaidTeamId)?.name || '')}</option>
+            </select>
+          </label>
+          <label>Raider
+            <select name="playerId" required>${rosterOptions(match.tieBreak.goldenRaidTeamId)}</select>
+          </label>
+          <label>Raid points (0–7)
+            <input name="points" type="number" min="0" max="7" value="0" required/>
+          </label>
+          <button class="btn-primary" type="submit">Record Golden Raid</button>
+        </form>
+      </div>
+    ` : tieBreakPhase === 'completed' ? `
+      <div class="match-tiebreak-panel">
+        <h4>Tie-break winner determined</h4>
+        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
+        <p>${escapeHtml(getMatchOutcome({ ...match, status: 'completed' }))}</p>
+        <button class="btn-primary match-finish-tiebreak" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','completed')">Complete Match</button>
+      </div>
+    ` : `
+      <form id="match-event-form-${escapeHtml(match.id)}" class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
+        <label>Team
+          <select name="teamId" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
+            <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
+            <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
+          </select>
+        </label>
+        <label>Event
+          <select name="type" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
+            <option value="raid">Raid points</option><option value="tackle">Tackle points</option>
+            <option value="bonus">Bonus point</option><option value="all_out">All-out (2 points)</option>
+            <option value="technical">Technical / extra points</option>
+          </select>
+        </label>
+        <label data-player-control>Player <select name="playerId" required></select></label>
+        <label data-points-control>Points <input name="points" type="number" min="1" max="5" value="1" required /></label>
+        <button class="btn-primary" type="submit">Add scoring event</button>
+      </form>
+    `;
 
     return `
       <article class="match-card match-admin-card">
         <div class="match-card-header">
           <div>
             <span class="match-status match-status-${escapeHtml(match.status)}">${escapeHtml(statusLabel)}</span>
+            <span class="match-round-label">${escapeHtml(getMatchRoundLabel(match))}</span>
             <h3>${escapeHtml(new Date(match.scheduledAt).toLocaleString())}</h3>
             <p class="match-venue">${escapeHtml(match.venue || 'Venue to be announced')}</p>
           </div>
@@ -866,6 +973,31 @@ function renderAdminMatches() {
             <button class="btn-icon danger" type="button" onclick="removeMatch('${escapeHtml(match.id)}')">🗑 Delete Match</button>
           </div>
         </div>
+        ${match.status === 'scheduled' ? `
+          <form class="match-toss-form" onsubmit="saveMatchToss(event,'${escapeHtml(match.id)}')">
+            <label>Toss won by
+              <select name="winnerTeamId" required>
+                <option value="">Select team</option>
+                <option value="${escapeHtml(home.id)}" ${match.toss?.winnerTeamId === home.id ? 'selected' : ''}>${escapeHtml(home.name)}</option>
+                <option value="${escapeHtml(away.id)}" ${match.toss?.winnerTeamId === away.id ? 'selected' : ''}>${escapeHtml(away.name)}</option>
+              </select>
+            </label>
+            <label>Toss winner chose
+              <select name="decision" required>
+                <option value="">Select choice</option>
+                <option value="raid" ${match.toss?.decision === 'raid' ? 'selected' : ''}>Raid</option>
+                <option value="court_side" ${match.toss?.decision === 'court_side' ? 'selected' : ''}>Choose court side</option>
+              </select>
+            </label>
+            <button class="btn-icon" type="submit">Save Toss</button>
+          </form>
+        ` : match.toss ? `
+          <p class="match-toss-summary">Toss: <strong>${escapeHtml(match.toss.winnerTeamName)}</strong> won and ${tossDecisionText}.</p>
+        ` : ''}
+        ${match.status === 'completed' ? `
+          <p class="match-outcome">${escapeHtml(getMatchOutcome(match))}</p>
+          ${tieBreakSummary}
+        ` : ''}
         ${match.status === 'completed' ? `
           <button class="match-scoreboard match-score-toggle" type="button"
             aria-expanded="false" aria-controls="admin-match-details-${escapeHtml(match.id)}"
@@ -901,30 +1033,13 @@ function renderAdminMatches() {
             <div class="match-player-points match-readonly-points">${teamPanel(home)}${teamPanel(away)}</div>
           ` : ''}
         `}
+        ${liveScoringForm}
         ${match.status === 'live' ? `
-          <form id="match-event-form-${escapeHtml(match.id)}" class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
-            <label>Team
-              <select name="teamId" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
-                <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
-                <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
-              </select>
-            </label>
-            <label>Event
-              <select name="type" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
-                <option value="raid">Raid points</option><option value="tackle">Tackle points</option>
-                <option value="bonus">Bonus point</option><option value="all_out">All-out (2 points)</option>
-                <option value="technical">Technical / extra points</option>
-              </select>
-            </label>
-            <label data-player-control>Player <select name="playerId" required></select></label>
-            <label data-points-control>Points <input name="points" type="number" min="1" max="5" value="1" required /></label>
-            <button class="btn-primary" type="submit">Add scoring event</button>
-          </form>
           <section class="match-event-history">
             <h4>Scoring event history</h4>
             ${match.events.length ? match.events.map((event) => `
               <div class="match-event-row">
-                <span><strong>${escapeHtml(eventLabel(event))}</strong> · ${escapeHtml(event.teamName)}
+                <span><strong>${escapeHtml(eventLabel(event))}</strong>${event.period !== 'regular' ? ` (${escapeHtml(event.period)})` : ''} · ${escapeHtml(event.teamName)}
                   ${event.playerName ? `· ${escapeHtml(event.playerName)}` : ''} · ${event.points} pts</span>
                 <button class="btn-icon danger" type="button" onclick="removeMatchEvent('${escapeHtml(match.id)}','${escapeHtml(event.id)}')">Remove</button>
               </div>
@@ -950,6 +1065,7 @@ function openMatchModal(matchId) {
   form.reset();
   document.getElementById('match-id').value = '';
   document.getElementById('match-modal-title').textContent = 'Schedule Match';
+  document.getElementById('match-round-type').value = 'league';
   const options = teams.map((team) =>
     `<option value="${escapeHtml(team.id)}">${escapeHtml(team.name)}</option>`
   ).join('');
@@ -962,6 +1078,7 @@ function openMatchModal(matchId) {
     if (!match) return;
     document.getElementById('match-id').value = match.id;
     document.getElementById('match-modal-title').textContent = 'Edit Match Schedule';
+    document.getElementById('match-round-type').value = match.roundType || 'league';
     homeSelect.value = match.homeTeam.id;
     awaySelect.value = match.awayTeam.id;
     document.getElementById('match-venue').value = match.venue || '';
@@ -982,6 +1099,7 @@ async function saveMatch(event) {
     return;
   }
   const match = {
+    roundType: document.getElementById('match-round-type').value,
     homeTeamId: document.getElementById('match-home-team').value,
     awayTeamId: document.getElementById('match-away-team').value,
     scheduledAt: scheduledDate.toISOString(),
@@ -1008,6 +1126,36 @@ async function setMatchStatus(matchId, status) {
     await updateMatchStatus(matchId, status);
     renderAdminMatches();
     showToast(`Match marked ${status}.`);
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+async function saveMatchToss(event, matchId) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    await updateMatchToss(matchId, {
+      winnerTeamId: form.elements.winnerTeamId.value,
+      decision: form.elements.decision.value
+    });
+    renderAdminMatches();
+    showToast('Match toss details saved.');
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+async function saveGoldenToss(event, matchId) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    await updateGoldenRaidToss(matchId, {
+      winnerTeamId: form.elements.winnerTeamId.value,
+      decision: form.elements.decision.value
+    });
+    renderAdminMatches();
+    showToast('Golden-raid toss details saved.');
   } catch (error) {
     showRequestError(error);
   }

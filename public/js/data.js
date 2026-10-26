@@ -67,6 +67,35 @@ function getMatches() { return matchesCache; }
 function getSession() { return sessionCache; }
 function setSession(user) { sessionCache = user; }
 
+function getMatchOutcome(match) {
+  if (match.status !== 'completed') return null;
+  if (match.tieBreak?.phase === 'completed') {
+    if (match.tieBreak.goldenRaid) {
+      const winner = match.tieBreak.winnerTeamId === match.homeTeam.id ? match.homeTeam : match.awayTeam;
+      return `${winner.name} won the Golden Raid`;
+    }
+    if (match.tieBreak.homeScore !== match.tieBreak.awayScore) {
+      const winner = match.tieBreak.homeScore > match.tieBreak.awayScore ? match.homeTeam : match.awayTeam;
+      const margin = Math.abs(match.tieBreak.homeScore - match.tieBreak.awayScore);
+      return `${winner.name} won the Super 5 by ${margin} ${margin === 1 ? 'point' : 'points'}`;
+    }
+  }
+  if (match.homeScore === match.awayScore) return 'Match tied';
+  const winner = match.homeScore > match.awayScore ? match.homeTeam : match.awayTeam;
+  const margin = Math.abs(match.homeScore - match.awayScore);
+  return `${winner.name} won by ${margin} ${margin === 1 ? 'point' : 'points'}`;
+}
+
+function getMatchRoundLabel(match) {
+  const labels = {
+    league: 'Match',
+    quarterfinal: 'Quarterfinal',
+    semifinal: 'Semifinal',
+    final: 'Final'
+  };
+  return `${labels[match.roundType] || 'Match'} ${match.roundNumber}`;
+}
+
 function renderSeasonStats(containerId, ranking = document.getElementById(`${containerId}-ranking`)?.value || 'total') {
   const container = document.getElementById(containerId);
   const rankingOptions = {
@@ -316,6 +345,22 @@ async function updateMatchStatus(id, status) {
   await apiRequest(`/api/matches/${encodeURIComponent(id)}/status`, {
     method: 'PUT',
     body: JSON.stringify({ status })
+  });
+  await refreshData();
+}
+
+async function updateMatchToss(id, toss) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/toss`, {
+    method: 'PUT',
+    body: JSON.stringify(toss)
+  });
+  await refreshData();
+}
+
+async function updateGoldenRaidToss(id, toss) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/golden-toss`, {
+    method: 'PUT',
+    body: JSON.stringify(toss)
   });
   await refreshData();
 }

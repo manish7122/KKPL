@@ -232,16 +232,23 @@ async function listMatches(client = pool) {
     SELECT m.id, m.home_team_id, home.name AS home_team_name, home.color AS home_team_color,
       m.away_team_id, away.name AS away_team_name, away.color AS away_team_color,
       m.scheduled_at, m.venue, m.status, m.home_score, m.away_score,
-      m.created_at, m.updated_at
+      m.toss_winner_team_id, toss_winner.name AS toss_winner_team_name, m.toss_decision,
+      m.round_type, m.tie_break_phase, m.tie_break_golden_raid_team_id,
+      m.tie_break_toss_team_id, golden_toss_winner.name AS tie_break_toss_winner_name,
+      m.tie_break_toss_decision,
+      m.created_at, m.updated_at,
+      ROW_NUMBER() OVER (PARTITION BY m.round_type ORDER BY m.scheduled_at, m.id)::int AS round_number
     FROM matches m
     JOIN teams home ON home.id = m.home_team_id
     JOIN teams away ON away.id = m.away_team_id
+    LEFT JOIN teams toss_winner ON toss_winner.id = m.toss_winner_team_id
+    LEFT JOIN teams golden_toss_winner ON golden_toss_winner.id = m.tie_break_toss_team_id
     ORDER BY CASE WHEN m.status='live' THEN 0 WHEN m.status='scheduled' THEN 1 ELSE 2 END,
       m.scheduled_at ASC
   `);
   const eventsResult = await client.query(`
     SELECT e.id, e.match_id, e.team_id, t.name AS team_name, e.player_id,
-      p.name AS player_name, e.event_type, e.points, e.created_at
+      p.name AS player_name, e.event_type, e.period, e.points, e.created_at
     FROM match_score_events e
     JOIN teams t ON t.id = e.team_id
     LEFT JOIN players p ON p.id = e.player_id
@@ -257,6 +264,7 @@ async function listMatches(client = pool) {
       playerId: row.player_id,
       playerName: row.player_name,
       type: row.event_type,
+      period: row.period,
       points: Number(row.points),
       createdAt: row.created_at
     });
@@ -269,8 +277,21 @@ async function listMatches(client = pool) {
       home: { allOut: 0, technical: 0, total: 0 },
       away: { allOut: 0, technical: 0, total: 0 }
     };
+    const tieBreakScore = {
+      home: 0,
+      away: 0,
+      super5Home: 0,
+      super5Away: 0,
+      goldenRaid: null
+    };
     for (const event of events) {
       const side = event.teamId === row.home_team_id ? 'home' : 'away';
+      if (event.period === 'super5') {
+        tieBreakScore[side] += event.points;
+        tieBreakScore[side === 'home' ? 'super5Home' : 'super5Away'] += event.points;
+      } else if (event.period === 'golden' && event.type === 'raid') {
+        tieBreakScore.goldenRaid = event;
+      }
       if (['all_out', 'technical'].includes(event.type)) {
         extras[side][event.type === 'all_out' ? 'allOut' : 'technical'] += event.points;
         extras[side].total += event.points;
@@ -300,6 +321,12 @@ async function listMatches(client = pool) {
     const teamPoints = (teamId) => [...playerPoints.values()]
       .filter((player) => player.teamId === teamId)
       .reduce((total, player) => total + player.total, 0);
+    const raidCount = events.filter((event) => event.period === 'super5').length;
+    const firstTieBreakTeam = row.toss_winner_team_id
+      ? row.toss_decision === 'raid'
+        ? row.toss_winner_team_id
+        : row.toss_winner_team_id === row.home_team_id ? row.away_team_id : row.home_team_id
+      : row.home_team_id;
     return {
       id: row.id,
       homeTeam: { id: row.home_team_id, name: row.home_team_name, color: row.home_team_color },
@@ -309,6 +336,36 @@ async function listMatches(client = pool) {
       status: row.status,
       homeScore: teamPoints(row.home_team_id) + extras.home.total,
       awayScore: teamPoints(row.away_team_id) + extras.away.total,
+      toss: row.toss_winner_team_id ? {
+        winnerTeamId: row.toss_winner_team_id,
+        winnerTeamName: row.toss_winner_team_name,
+        decision: row.toss_decision
+      } : null,
+      roundType: row.round_type,
+      roundNumber: row.round_number,
+      tieBreak: {
+        phase: row.tie_break_phase,
+        homeScore: tieBreakScore.home,
+        awayScore: tieBreakScore.away,
+        raids: events.filter((event) => event.period === 'super5').length,
+        expectedTeamId: row.tie_break_phase === 'super5' && raidCount < 10
+          ? raidCount % 2 === 0
+            ? firstTieBreakTeam
+            : firstTieBreakTeam === row.home_team_id ? row.away_team_id : row.home_team_id
+          : null,
+        goldenRaidTeamId: row.tie_break_golden_raid_team_id,
+        goldenRaid: tieBreakScore.goldenRaid,
+        toss: row.tie_break_toss_team_id ? {
+          winnerTeamId: row.tie_break_toss_team_id,
+          winnerTeamName: row.tie_break_toss_winner_name,
+          decision: row.tie_break_toss_decision
+        } : null,
+        winnerTeamId: tieBreakScore.goldenRaid
+          ? tieBreakScore.goldenRaid.points > 0
+            ? row.tie_break_golden_raid_team_id
+            : row.tie_break_golden_raid_team_id === row.home_team_id ? row.away_team_id : row.home_team_id
+          : null
+      },
       extras,
       playerPoints: [...playerPoints.values()].sort((a, b) => a.playerName.localeCompare(b.playerName)),
       events,
@@ -388,8 +445,13 @@ async function initDatabase() {
       scheduled_at TIMESTAMPTZ NOT NULL,
       venue TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'completed', 'cancelled')),
+      round_type TEXT NOT NULL DEFAULT 'league' CHECK (round_type IN ('league', 'quarterfinal', 'semifinal', 'final')),
       home_score INTEGER NOT NULL DEFAULT 0 CHECK (home_score >= 0),
       away_score INTEGER NOT NULL DEFAULT 0 CHECK (away_score >= 0),
+      tie_break_phase TEXT CHECK (tie_break_phase IN ('super5', 'golden_toss', 'golden_raid', 'completed')),
+      tie_break_golden_raid_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+      tie_break_toss_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+      tie_break_toss_decision TEXT CHECK (tie_break_toss_decision IN ('raid', 'defend')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CHECK (home_team_id <> away_team_id)
@@ -404,6 +466,13 @@ async function initDatabase() {
       PRIMARY KEY (match_id, player_id)
     )
   `);
+  await pool.query('ALTER TABLE matches ADD COLUMN IF NOT EXISTS toss_winner_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL');
+  await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS toss_decision TEXT CHECK (toss_decision IN ('raid', 'court_side'))");
+  await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS round_type TEXT NOT NULL DEFAULT 'league' CHECK (round_type IN ('league', 'quarterfinal', 'semifinal', 'final'))");
+  await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS tie_break_phase TEXT CHECK (tie_break_phase IN ('super5', 'golden_toss', 'golden_raid', 'completed'))");
+  await pool.query('ALTER TABLE matches ADD COLUMN IF NOT EXISTS tie_break_golden_raid_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL');
+  await pool.query('ALTER TABLE matches ADD COLUMN IF NOT EXISTS tie_break_toss_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL');
+  await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS tie_break_toss_decision TEXT CHECK (tie_break_toss_decision IN ('raid', 'defend'))");
   await pool.query(`
     CREATE TABLE IF NOT EXISTS match_score_events (
       id TEXT PRIMARY KEY,
@@ -411,7 +480,8 @@ async function initDatabase() {
       team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
       player_id TEXT REFERENCES players(id) ON DELETE CASCADE,
       event_type TEXT NOT NULL CHECK (event_type IN ('raid', 'tackle', 'bonus', 'all_out', 'technical', 'legacy')),
-      points INTEGER NOT NULL CHECK (points > 0),
+      period TEXT NOT NULL DEFAULT 'regular' CHECK (period IN ('regular', 'super5', 'golden')),
+      points INTEGER NOT NULL CHECK (points >= 0),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CHECK (
         (event_type IN ('raid', 'tackle', 'bonus', 'legacy') AND player_id IS NOT NULL)
@@ -419,6 +489,9 @@ async function initDatabase() {
       )
     )
   `);
+  await pool.query("ALTER TABLE match_score_events ADD COLUMN IF NOT EXISTS period TEXT NOT NULL DEFAULT 'regular'");
+  await pool.query('ALTER TABLE match_score_events DROP CONSTRAINT IF EXISTS match_score_events_points_check');
+  await pool.query('ALTER TABLE match_score_events ADD CONSTRAINT match_score_events_points_check CHECK (points >= 0)');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS match_score_migrations (
       version INTEGER PRIMARY KEY,
@@ -1058,18 +1131,19 @@ app.get('/api/matches', requireRole('admin'), asyncRoute(async (req, res) => {
 }));
 
 app.post('/api/matches', requireRole('admin'), asyncRoute(async (req, res) => {
-  const { homeTeamId, awayTeamId, scheduledAt, venue = '' } = req.body || {};
+  const { homeTeamId, awayTeamId, scheduledAt, venue = '', roundType = 'league' } = req.body || {};
   const scheduledDate = typeof scheduledAt === 'string' ? new Date(scheduledAt) : null;
   if (typeof homeTeamId !== 'string' || typeof awayTeamId !== 'string' || homeTeamId === awayTeamId ||
       !scheduledDate || !Number.isFinite(scheduledDate.getTime()) ||
-      typeof venue !== 'string' || venue.trim().length > 120) {
-    return res.status(400).json({ error: 'Choose two different teams, a valid date and time, and a venue under 120 characters.' });
+      typeof venue !== 'string' || venue.trim().length > 120 ||
+      !['league', 'quarterfinal', 'semifinal', 'final'].includes(roundType)) {
+    return res.status(400).json({ error: 'Choose a valid match round, two different teams, date and time, and a venue under 120 characters.' });
   }
   const id = `M_${crypto.randomUUID()}`;
   await pool.query(
-    `INSERT INTO matches (id, home_team_id, away_team_id, scheduled_at, venue)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [id, homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim()]
+    `INSERT INTO matches (id, home_team_id, away_team_id, scheduled_at, venue, round_type)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim(), roundType]
   );
   res.status(201).json((await listMatches()).find((match) => match.id === id));
 }));
@@ -1081,12 +1155,13 @@ app.delete('/api/matches/:id', requireRole('admin'), asyncRoute(async (req, res)
 }));
 
 app.put('/api/matches/:id', requireRole('admin'), asyncRoute(async (req, res) => {
-  const { homeTeamId, awayTeamId, scheduledAt, venue = '' } = req.body || {};
+  const { homeTeamId, awayTeamId, scheduledAt, venue = '', roundType = 'league' } = req.body || {};
   const scheduledDate = typeof scheduledAt === 'string' ? new Date(scheduledAt) : null;
   if (typeof homeTeamId !== 'string' || typeof awayTeamId !== 'string' || homeTeamId === awayTeamId ||
       !scheduledDate || !Number.isFinite(scheduledDate.getTime()) ||
-      typeof venue !== 'string' || venue.trim().length > 120) {
-    return res.status(400).json({ error: 'Choose two different teams, a valid date and time, and a venue under 120 characters.' });
+      typeof venue !== 'string' || venue.trim().length > 120 ||
+      !['league', 'quarterfinal', 'semifinal', 'final'].includes(roundType)) {
+    return res.status(400).json({ error: 'Choose a valid match round, two different teams, date and time, and a venue under 120 characters.' });
   }
   const client = await pool.connect();
   try {
@@ -1104,9 +1179,14 @@ app.put('/api/matches/:id', requireRole('admin'), asyncRoute(async (req, res) =>
       return res.status(409).json({ error: 'Only scheduled or cancelled matches can be rescheduled.' });
     }
     await client.query(
-      `UPDATE matches SET home_team_id=$1, away_team_id=$2, scheduled_at=$3, venue=$4,
-        home_score=0, away_score=0, updated_at=NOW() WHERE id=$5`,
-      [homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim(), req.params.id]
+      `UPDATE matches SET home_team_id=$1, away_team_id=$2, scheduled_at=$3, venue=$4, round_type=$6,
+        home_score=0, away_score=0,
+        toss_winner_team_id=CASE WHEN home_team_id<>$1 OR away_team_id<>$2 THEN NULL ELSE toss_winner_team_id END,
+        toss_decision=CASE WHEN home_team_id<>$1 OR away_team_id<>$2 THEN NULL ELSE toss_decision END,
+        tie_break_phase=NULL, tie_break_golden_raid_team_id=NULL,
+        tie_break_toss_team_id=NULL, tie_break_toss_decision=NULL,
+        updated_at=NOW() WHERE id=$5`,
+      [homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim(), req.params.id, roundType]
     );
     await client.query('DELETE FROM match_score_events WHERE match_id=$1', [req.params.id]);
     await client.query('COMMIT');
@@ -1124,11 +1204,121 @@ app.put('/api/matches/:id/status', requireRole('admin'), asyncRoute(async (req, 
   if (!['scheduled', 'live', 'completed', 'cancelled'].includes(status)) {
     return res.status(400).json({ error: 'Choose a valid match status.' });
   }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `SELECT id, status, round_type, tie_break_phase, home_team_id, away_team_id
+       FROM matches WHERE id=$1 FOR UPDATE`,
+      [req.params.id]
+    );
+    if (!result.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+    const match = result.rows[0];
+    let nextStatus = status;
+    let nextTieBreakPhase = match.tie_break_phase;
+    if (status === 'completed' && match.round_type !== 'league') {
+      if (!match.tie_break_phase) {
+        const scoreRows = await client.query(
+          `SELECT team_id, COALESCE(SUM(points), 0)::int AS points
+           FROM match_score_events WHERE match_id=$1 AND period='regular' GROUP BY team_id`,
+          [req.params.id]
+        );
+        const scores = new Map(scoreRows.rows.map((row) => [row.team_id, Number(row.points)]));
+        if ((scores.get(match.home_team_id) || 0) === (scores.get(match.away_team_id) || 0)) {
+          nextStatus = 'live';
+          nextTieBreakPhase = 'super5';
+        }
+      } else if (match.tie_break_phase === 'super5') {
+        const raidRows = await client.query(
+          `SELECT COUNT(*)::int AS raids,
+              COALESCE(SUM(points) FILTER (WHERE team_id=$2), 0)::int AS home_points,
+              COALESCE(SUM(points) FILTER (WHERE team_id=$3), 0)::int AS away_points
+           FROM match_score_events WHERE match_id=$1 AND period='super5'`,
+          [req.params.id, match.home_team_id, match.away_team_id]
+        );
+        const raids = raidRows.rows[0];
+        if (raids.raids < 10) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: `Complete all 10 Super 5 raids first. ${raids.raids} of 10 are recorded.` });
+        }
+        if (raids.home_points === raids.away_points) {
+          nextStatus = 'live';
+          nextTieBreakPhase = 'golden_toss';
+        } else {
+          nextTieBreakPhase = 'completed';
+        }
+      } else if (match.tie_break_phase === 'golden_toss') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Record the golden-raid toss and raid before completing this match.' });
+      } else if (match.tie_break_phase === 'golden_raid') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Record the golden raid before completing this match.' });
+      }
+    }
+    await client.query(
+      'UPDATE matches SET status=$1, tie_break_phase=$2, updated_at=NOW() WHERE id=$3',
+      [nextStatus, nextTieBreakPhase, req.params.id]
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
+app.put('/api/matches/:id/toss', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { winnerTeamId, decision } = req.body || {};
+  if (typeof winnerTeamId !== 'string' || !['raid', 'court_side'].includes(decision)) {
+    return res.status(400).json({ error: 'Choose the toss-winning team and whether it elected to raid or choose a court side.' });
+  }
   const result = await pool.query(
-    'UPDATE matches SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
-    [status, req.params.id]
+    `UPDATE matches
+     SET toss_winner_team_id=$1, toss_decision=$2, updated_at=NOW()
+     WHERE id=$3 AND status='scheduled' AND $1 IN (home_team_id, away_team_id)
+     RETURNING id`,
+    [winnerTeamId, decision, req.params.id]
   );
-  if (!result.rowCount) return res.status(404).json({ error: 'Match not found.' });
+  if (!result.rowCount) {
+    const match = await pool.query('SELECT id, status FROM matches WHERE id=$1', [req.params.id]);
+    if (!match.rowCount) return res.status(404).json({ error: 'Match not found.' });
+    if (match.rows[0].status !== 'scheduled') {
+      return res.status(409).json({ error: 'Toss details can only be entered before the match starts.' });
+    }
+    return res.status(400).json({ error: 'The toss winner must be one of the teams in this match.' });
+  }
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
+app.put('/api/matches/:id/golden-toss', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { winnerTeamId, decision } = req.body || {};
+  if (typeof winnerTeamId !== 'string' || !['raid', 'defend'].includes(decision)) {
+    return res.status(400).json({ error: 'Choose the toss winner and whether they choose to raid or defend.' });
+  }
+  const result = await pool.query(
+    `UPDATE matches
+     SET tie_break_toss_team_id=$1, tie_break_toss_decision=$2,
+       tie_break_golden_raid_team_id=CASE WHEN $2='raid' THEN $1
+         WHEN $1=home_team_id THEN away_team_id ELSE home_team_id END,
+       tie_break_phase='golden_raid', updated_at=NOW()
+     WHERE id=$3 AND status='live' AND tie_break_phase='golden_toss'
+       AND $1 IN (home_team_id, away_team_id)
+     RETURNING id`,
+    [winnerTeamId, decision, req.params.id]
+  );
+  if (!result.rowCount) {
+    const match = await pool.query('SELECT status, tie_break_phase FROM matches WHERE id=$1', [req.params.id]);
+    if (!match.rowCount) return res.status(404).json({ error: 'Match not found.' });
+    if (match.rows[0].tie_break_phase !== 'golden_toss') {
+      return res.status(409).json({ error: 'The match is not waiting for a golden-raid toss.' });
+    }
+    return res.status(400).json({ error: 'The toss winner must be one of the teams in this match.' });
+  }
   res.json((await listMatches()).find((match) => match.id === req.params.id));
 }));
 
@@ -1142,7 +1332,7 @@ app.post('/api/matches/:id/events', requireRole('admin'), asyncRoute(async (req,
   }
   if (type === 'all_out' && points !== undefined && points !== 2 ||
       type === 'bonus' && points !== undefined && points !== 1 ||
-      type === 'raid' && (!Number.isSafeInteger(points) || points < 1 || points > 7) ||
+      type === 'raid' && (!Number.isSafeInteger(points) || points < 0 || points > 7) ||
       type === 'tackle' && (!Number.isSafeInteger(points) || points < 1 || points > 2) ||
       type === 'technical' && (!Number.isSafeInteger(points) || points < 1 || points > 99)) {
     return res.status(400).json({ error: 'Enter valid points for this scoring event.' });
@@ -1152,7 +1342,9 @@ app.post('/api/matches/:id/events', requireRole('admin'), asyncRoute(async (req,
   try {
     await client.query('BEGIN');
     const matchResult = await client.query(
-      'SELECT home_team_id, away_team_id, status FROM matches WHERE id=$1 FOR UPDATE',
+      `SELECT home_team_id, away_team_id, status, round_type, tie_break_phase,
+          toss_winner_team_id, toss_decision, tie_break_golden_raid_team_id
+       FROM matches WHERE id=$1 FOR UPDATE`,
       [req.params.id]
     );
     if (!matchResult.rowCount) {
@@ -1169,6 +1361,61 @@ app.post('/api/matches/:id/events', requireRole('admin'), asyncRoute(async (req,
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Choose one of the teams in this match.' });
     }
+    let period = 'regular';
+    let goldenRaid = false;
+    if (match.tie_break_phase === 'super5') {
+      if (type !== 'raid' || !Number.isSafeInteger(points) || points < 0 || points > 7 || !playerId) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'A Super 5 attempt must be recorded as a player raid with 0 to 7 points.' });
+      }
+      const raidCountResult = await client.query(
+        `SELECT COUNT(*)::int AS raids FROM match_score_events WHERE match_id=$1 AND period='super5'`,
+        [req.params.id]
+      );
+      const raidCount = raidCountResult.rows[0].raids;
+      if (raidCount >= 10) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'All 10 Super 5 raids have already been recorded.' });
+      }
+      const firstTeam = match.toss_winner_team_id
+        ? match.toss_decision === 'raid'
+          ? match.toss_winner_team_id
+          : match.toss_winner_team_id === match.home_team_id ? match.away_team_id : match.home_team_id
+        : match.home_team_id;
+      const expectedTeam = raidCount % 2 === 0
+        ? firstTeam
+        : firstTeam === match.home_team_id ? match.away_team_id : match.home_team_id;
+      if (teamId !== expectedTeam) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Super 5 raids must alternate between the teams, starting with the indicated team.' });
+      }
+      period = 'super5';
+    } else if (match.tie_break_phase === 'golden_toss') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Record the golden-raid toss before entering the deciding raid.' });
+    } else if (match.tie_break_phase === 'golden_raid') {
+      if (type !== 'raid' || !Number.isSafeInteger(points) || points < 0 || points > 7 || !playerId ||
+          teamId !== match.tie_break_golden_raid_team_id) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Record the single golden raid for the team chosen by the toss.' });
+      }
+      const existingGoldenRaid = await client.query(
+        "SELECT 1 FROM match_score_events WHERE match_id=$1 AND period='golden' LIMIT 1",
+        [req.params.id]
+      );
+      if (existingGoldenRaid.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'The golden raid has already been recorded.' });
+      }
+      period = 'golden';
+      goldenRaid = true;
+    } else if (match.tie_break_phase === 'completed') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The match tie-break is already complete.' });
+    } else if (type === 'raid' && (!Number.isSafeInteger(points) || points < 1)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'A regular raid must score at least one point to record.' });
+    }
     if (playerEvent) {
       const playerResult = await client.query(
         'SELECT team_id, category FROM players WHERE id=$1',
@@ -1181,11 +1428,31 @@ app.post('/api/matches/:id/events', requireRole('admin'), asyncRoute(async (req,
     }
 
     await client.query(
-      `INSERT INTO match_score_events (id, match_id, team_id, player_id, event_type, points)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [`E_${crypto.randomUUID()}`, req.params.id, teamId, playerEvent ? playerId : null, type, eventPoints]
+      `INSERT INTO match_score_events (id, match_id, team_id, player_id, event_type, period, points)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [`E_${crypto.randomUUID()}`, req.params.id, teamId, playerEvent ? playerId : null, type, period, eventPoints]
     );
-    await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    if (goldenRaid) {
+      await client.query(
+        "UPDATE matches SET tie_break_phase='completed', status='completed', updated_at=NOW() WHERE id=$1",
+        [req.params.id]
+      );
+    } else if (period === 'super5') {
+      const scoreResult = await client.query(
+        `SELECT COUNT(*)::int AS raids,
+            COALESCE(SUM(points) FILTER (WHERE team_id=$2), 0)::int AS home_points,
+            COALESCE(SUM(points) FILTER (WHERE team_id=$3), 0)::int AS away_points
+         FROM match_score_events WHERE match_id=$1 AND period='super5'`,
+        [req.params.id, match.home_team_id, match.away_team_id]
+      );
+      const score = scoreResult.rows[0];
+      await client.query(
+        `UPDATE matches SET tie_break_phase=$1, updated_at=NOW() WHERE id=$2`,
+        [score.raids < 10 ? 'super5' : score.home_points === score.away_points ? 'golden_toss' : 'completed', req.params.id]
+      );
+    } else {
+      await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -1201,7 +1468,9 @@ app.delete('/api/matches/:id/events/:eventId', requireRole('admin'), asyncRoute(
   try {
     await client.query('BEGIN');
     const matchResult = await client.query(
-      'SELECT status FROM matches WHERE id=$1 FOR UPDATE',
+      `SELECT status, round_type, tie_break_phase, home_team_id, away_team_id,
+          tie_break_toss_team_id, tie_break_toss_decision
+       FROM matches WHERE id=$1 FOR UPDATE`,
       [req.params.id]
     );
     if (!matchResult.rowCount) {
@@ -1213,14 +1482,77 @@ app.delete('/api/matches/:id/events/:eventId', requireRole('admin'), asyncRoute(
       return res.status(409).json({ error: 'Scoring events can only be corrected during a live match.' });
     }
     const eventResult = await client.query(
-      'DELETE FROM match_score_events WHERE id=$1 AND match_id=$2 RETURNING id',
+      'DELETE FROM match_score_events WHERE id=$1 AND match_id=$2 RETURNING id, period',
       [req.params.eventId, req.params.id]
     );
     if (!eventResult.rowCount) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Scoring event not found.' });
     }
-    await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    const match = matchResult.rows[0];
+    if (eventResult.rows[0].period === 'regular' && match.tie_break_phase) {
+      await client.query(
+        "DELETE FROM match_score_events WHERE match_id=$1 AND period IN ('super5', 'golden')",
+        [req.params.id]
+      );
+      await client.query(
+        `UPDATE matches SET tie_break_toss_team_id=NULL, tie_break_toss_decision=NULL,
+          tie_break_golden_raid_team_id=NULL WHERE id=$1`,
+        [req.params.id]
+      );
+      const regularScores = await client.query(
+        `SELECT COALESCE(SUM(points) FILTER (WHERE team_id=$2), 0)::int AS home_points,
+            COALESCE(SUM(points) FILTER (WHERE team_id=$3), 0)::int AS away_points
+         FROM match_score_events WHERE match_id=$1 AND period='regular'`,
+        [req.params.id, match.home_team_id, match.away_team_id]
+      );
+      const regular = regularScores.rows[0];
+      const phase = match.round_type !== 'league' && regular.home_points === regular.away_points
+        ? 'super5'
+        : null;
+      await client.query(
+        'UPDATE matches SET tie_break_phase=$1, updated_at=NOW() WHERE id=$2',
+        [phase, req.params.id]
+      );
+    } else if (eventResult.rows[0].period === 'super5') {
+      await client.query(
+        `DELETE FROM match_score_events WHERE match_id=$1 AND period='golden'`,
+        [req.params.id]
+      );
+      await client.query(
+        `UPDATE matches SET tie_break_toss_team_id=NULL, tie_break_toss_decision=NULL,
+          tie_break_golden_raid_team_id=NULL WHERE id=$1`,
+        [req.params.id]
+      );
+      match.tie_break_toss_team_id = null;
+      match.tie_break_toss_decision = null;
+    }
+    if (eventResult.rows[0].period !== 'regular' && (
+        (match.tie_break_phase && match.tie_break_phase !== 'golden_toss') ||
+        eventResult.rows[0].period === 'super5' || eventResult.rows[0].period === 'golden')) {
+      const tieBreakResult = await client.query(
+        `SELECT COUNT(*) FILTER (WHERE period='super5')::int AS raids,
+            COALESCE(SUM(points) FILTER (WHERE period='super5' AND team_id=$2), 0)::int AS home_points,
+            COALESCE(SUM(points) FILTER (WHERE period='super5' AND team_id=$3), 0)::int AS away_points,
+            COUNT(*) FILTER (WHERE period='golden')::int AS golden_raids
+         FROM match_score_events WHERE match_id=$1`,
+        [req.params.id, matchResult.rows[0].home_team_id, matchResult.rows[0].away_team_id]
+      );
+      const score = tieBreakResult.rows[0];
+      const phase = score.golden_raids
+        ? 'completed'
+        : score.raids === 10 && score.home_points === score.away_points
+          ? match.tie_break_toss_team_id ? 'golden_raid' : 'golden_toss'
+          : score.raids < 10
+            ? 'super5'
+            : score.home_points === score.away_points ? 'golden_toss' : 'completed';
+      await client.query(
+        'UPDATE matches SET tie_break_phase=$1, updated_at=NOW() WHERE id=$2',
+        [phase, req.params.id]
+      );
+    } else {
+      await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    }
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
