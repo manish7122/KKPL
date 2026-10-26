@@ -21,7 +21,7 @@ The frontend uses the **Next.js App Router** (`/`, `/admin`, `/team`). The exist
    npm run dev
    ```
 
-6. Open <http://localhost:3000>. The server creates the tables and demo data on its first run.
+6. Open <http://localhost:3000>. The server creates the tables and adds demo teams and players to an empty database in development mode only.
 
 `npm run build` builds the Next.js application. `npm run dev` starts the Next.js development server through the Express server so the existing API and Next.js pages share the same port.
 
@@ -29,11 +29,11 @@ The frontend uses the **Next.js App Router** (`/`, `/admin`, `/team`). The exist
 
 1. Push the project to a Git provider and import it into Vercel. Vercel builds and serves the Next.js application and its assets. Requests to `/api/*` use the Next.js Pages API catch-all at `pages/api/[...path].js`, which forwards them to the existing Express API.
 2. In Vercel project settings, add `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` for Production (and Preview if needed). Use Neon’s pooled connection string for `DATABASE_URL`; keep its SSL requirement. Set a unique session secret of at least 32 characters and an admin password of at least 12 characters.
-3. Deploy. The API initializes the database schema on its first invocation. Keep the same Neon database when redeploying so teams, players, and sessions persist.
+3. Deploy. The API initializes the database schema on its first invocation. Production deployments do not add demo teams or players; add real teams and players from the admin portal. Keep the same Neon database when redeploying so teams, players, and sessions persist.
 
 The Vercel API entry point initializes the database before handling API requests. Locally, `npm start` runs the production Next.js app with the Express API.
 
-The admin email is set by `ADMIN_EMAIL` in `.env`. Demo team accounts are:
+The admin email is set by `ADMIN_EMAIL` in `.env`. Local development demo team accounts are:
 
 | Team | Email | Initial password |
 |---|---|---|

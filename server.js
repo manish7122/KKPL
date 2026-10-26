@@ -570,7 +570,7 @@ async function initDatabase() {
     await seedClient.query('BEGIN');
     await seedClient.query('SELECT pg_advisory_xact_lock($1)', [746210092]);
     const count = await seedClient.query('SELECT COUNT(*)::int AS total FROM teams');
-    if (count.rows[0].total === 0) {
+    if (!isProduction && count.rows[0].total === 0) {
       for (const team of demoTeams) {
         const passwordHash = await bcrypt.hash(team.password, 12);
         await seedClient.query(
