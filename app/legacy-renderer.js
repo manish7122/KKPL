@@ -49,7 +49,11 @@ export default function LegacyRenderer({ bodyClass, content, styles, scripts, fo
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="stylesheet" href={fontStylesheet} />
       {styles.map((href) => <link key={href} rel="stylesheet" href={href} />)}
-      <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: content }} />
+      <div
+        style={{ display: 'contents' }}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
     </>
   );
 }

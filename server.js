@@ -32,6 +32,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL.trim().toLowerCase();
 const adminPasswordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
 const MAX_PLAYER_PHOTO_BYTES = 2 * 1024 * 1024;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
+const playerRegistrationAttempts = new Map();
 
 if (isProduction) {
   app.set('trust proxy', 1);
@@ -68,6 +69,23 @@ app.use(session({
 
 function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
+
+function auctionBidIncrement(currentBidLakhs) {
+  const bidRupees = Math.round(currentBidLakhs * 100000);
+  if (bidRupees < 2000) return 50;
+  if (bidRupees < 4000) return 100;
+  if (bidRupees < 7000) return 200;
+  if (bidRupees < 10000) return 300;
+  if (bidRupees < 13000) return 400;
+  if (bidRupees < 15000) return 450;
+  if (bidRupees < 18000) return 500;
+  if (bidRupees < 20000) return 550;
+  if (bidRupees < 25000) return 600;
+  if (bidRupees < 30000) return 700;
+  if (bidRupees < 35000) return 800;
+  if (bidRupees < 40000) return 900;
+  return 1000;
 }
 
 function requireRole(role) {
@@ -209,6 +227,97 @@ async function listPlayers(client = pool) {
   return result.rows.map(cleanPlayer);
 }
 
+async function listMatches(client = pool) {
+  const matchesResult = await client.query(`
+    SELECT m.id, m.home_team_id, home.name AS home_team_name, home.color AS home_team_color,
+      m.away_team_id, away.name AS away_team_name, away.color AS away_team_color,
+      m.scheduled_at, m.venue, m.status, m.home_score, m.away_score,
+      m.created_at, m.updated_at
+    FROM matches m
+    JOIN teams home ON home.id = m.home_team_id
+    JOIN teams away ON away.id = m.away_team_id
+    ORDER BY CASE WHEN m.status='live' THEN 0 WHEN m.status='scheduled' THEN 1 ELSE 2 END,
+      m.scheduled_at ASC
+  `);
+  const eventsResult = await client.query(`
+    SELECT e.id, e.match_id, e.team_id, t.name AS team_name, e.player_id,
+      p.name AS player_name, e.event_type, e.points, e.created_at
+    FROM match_score_events e
+    JOIN teams t ON t.id = e.team_id
+    LEFT JOIN players p ON p.id = e.player_id
+    ORDER BY e.created_at, e.id
+  `);
+  const eventsByMatch = new Map();
+  for (const row of eventsResult.rows) {
+    const events = eventsByMatch.get(row.match_id) || [];
+    events.push({
+      id: row.id,
+      teamId: row.team_id,
+      teamName: row.team_name,
+      playerId: row.player_id,
+      playerName: row.player_name,
+      type: row.event_type,
+      points: Number(row.points),
+      createdAt: row.created_at
+    });
+    eventsByMatch.set(row.match_id, events);
+  }
+  return matchesResult.rows.map((row) => {
+    const events = eventsByMatch.get(row.id) || [];
+    const playerPoints = new Map();
+    const extras = {
+      home: { allOut: 0, technical: 0, total: 0 },
+      away: { allOut: 0, technical: 0, total: 0 }
+    };
+    for (const event of events) {
+      const side = event.teamId === row.home_team_id ? 'home' : 'away';
+      if (['all_out', 'technical'].includes(event.type)) {
+        extras[side][event.type === 'all_out' ? 'allOut' : 'technical'] += event.points;
+        extras[side].total += event.points;
+      } else if (event.playerId) {
+        const player = playerPoints.get(event.playerId) || {
+          playerId: event.playerId,
+          playerName: event.playerName,
+          teamId: event.teamId,
+          teamName: event.teamName,
+          raidPoints: 0,
+          tacklePoints: 0,
+          bonusPoints: 0,
+          otherPoints: 0,
+          total: 0
+        };
+        const pointKey = {
+          raid: 'raidPoints',
+          tackle: 'tacklePoints',
+          bonus: 'bonusPoints',
+          legacy: 'otherPoints'
+        }[event.type];
+        if (pointKey) player[pointKey] += event.points;
+        player.total += event.points;
+        playerPoints.set(event.playerId, player);
+      }
+    }
+    const teamPoints = (teamId) => [...playerPoints.values()]
+      .filter((player) => player.teamId === teamId)
+      .reduce((total, player) => total + player.total, 0);
+    return {
+      id: row.id,
+      homeTeam: { id: row.home_team_id, name: row.home_team_name, color: row.home_team_color },
+      awayTeam: { id: row.away_team_id, name: row.away_team_name, color: row.away_team_color },
+      scheduledAt: row.scheduled_at,
+      venue: row.venue,
+      status: row.status,
+      homeScore: teamPoints(row.home_team_id) + extras.home.total,
+      awayScore: teamPoints(row.away_team_id) + extras.away.total,
+      extras,
+      playerPoints: [...playerPoints.values()].sort((a, b) => a.playerName.localeCompare(b.playerName)),
+      events,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  });
+}
+
 async function initDatabase() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS teams (
@@ -271,6 +380,96 @@ async function initDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS matches (
+      id TEXT PRIMARY KEY,
+      home_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      away_team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      scheduled_at TIMESTAMPTZ NOT NULL,
+      venue TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'completed', 'cancelled')),
+      home_score INTEGER NOT NULL DEFAULT 0 CHECK (home_score >= 0),
+      away_score INTEGER NOT NULL DEFAULT 0 CHECK (away_score >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CHECK (home_team_id <> away_team_id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS match_player_points (
+      match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+      PRIMARY KEY (match_id, player_id)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS match_score_events (
+      id TEXT PRIMARY KEY,
+      match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+      player_id TEXT REFERENCES players(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL CHECK (event_type IN ('raid', 'tackle', 'bonus', 'all_out', 'technical', 'legacy')),
+      points INTEGER NOT NULL CHECK (points > 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CHECK (
+        (event_type IN ('raid', 'tackle', 'bonus', 'legacy') AND player_id IS NOT NULL)
+        OR (event_type IN ('all_out', 'technical') AND player_id IS NULL)
+      )
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS match_score_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS match_score_events_match_created_idx ON match_score_events (match_id, created_at)');
+  const migrationClient = await pool.connect();
+  try {
+    await migrationClient.query('BEGIN');
+    const migration = await migrationClient.query(
+      'INSERT INTO match_score_migrations (version) VALUES (1) ON CONFLICT DO NOTHING RETURNING version'
+    );
+    if (migration.rowCount) {
+      const oldScores = await migrationClient.query(
+        'SELECT id, home_team_id, away_team_id, home_score, away_score FROM matches WHERE home_score > 0 OR away_score > 0'
+      );
+      for (const match of oldScores.rows) {
+        if (Number(match.home_score) > 0) {
+          await migrationClient.query(
+            `INSERT INTO match_score_events (id, match_id, team_id, event_type, points)
+             VALUES ($1, $2, $3, 'technical', $4)`,
+            [`MIG_${crypto.randomUUID()}`, match.id, match.home_team_id, Number(match.home_score)]
+          );
+        }
+        if (Number(match.away_score) > 0) {
+          await migrationClient.query(
+            `INSERT INTO match_score_events (id, match_id, team_id, event_type, points)
+             VALUES ($1, $2, $3, 'technical', $4)`,
+            [`MIG_${crypto.randomUUID()}`, match.id, match.away_team_id, Number(match.away_score)]
+          );
+        }
+      }
+      const oldPlayerPoints = await migrationClient.query(
+        'SELECT match_id, player_id, team_id, points FROM match_player_points WHERE points > 0'
+      );
+      for (const player of oldPlayerPoints.rows) {
+        await migrationClient.query(
+          `INSERT INTO match_score_events (id, match_id, team_id, player_id, event_type, points)
+           VALUES ($1, $2, $3, $4, 'legacy', $5)`,
+          [`MIG_${crypto.randomUUID()}`, player.match_id, player.team_id, player.player_id, Number(player.points)]
+        );
+      }
+    }
+    await migrationClient.query('COMMIT');
+  } catch (error) {
+    await migrationClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    migrationClient.release();
+  }
   await pool.query(`
     INSERT INTO auction_bid_history (player_id, team_id, bid_amount)
     SELECT p.id, p.current_team_id, p.current_bid
@@ -551,6 +750,45 @@ app.delete('/api/players/:id', requireRole('admin'), asyncRoute(async (req, res)
   res.status(204).end();
 }));
 
+app.post('/api/player-registration', asyncRoute(async (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const attempt = playerRegistrationAttempts.get(ip);
+  if (attempt && now - attempt.startedAt < 10 * 60 * 1000 && attempt.count >= 5) {
+    return res.status(429).json({ error: 'Too many registration attempts. Please try again in a few minutes.' });
+  }
+  if (!attempt || now - attempt.startedAt >= 10 * 60 * 1000) {
+    playerRegistrationAttempts.set(ip, { startedAt: now, count: 1 });
+  } else {
+    attempt.count += 1;
+  }
+
+  const { name, age, nationality = '', category, prevTeam = '', skills = '', website = '', photoData } = req.body || {};
+  if (typeof website !== 'string' || website.trim()) {
+    return res.status(400).json({ error: 'The registration could not be accepted.' });
+  }
+  const photo = parsePlayerPhoto(photoData);
+  if (!photo || photo.error) {
+    return res.status(400).json({ error: photo?.error || 'A player photo is required.' });
+  }
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 100 ||
+      !['Raider', 'Defender', 'All-Rounder'].includes(category) ||
+      !Number.isInteger(Number(age)) || Number(age) < 16 || Number(age) > 45 ||
+      typeof nationality !== 'string' || nationality.trim().length > 80 ||
+      typeof prevTeam !== 'string' || prevTeam.trim().length > 120 ||
+      typeof skills !== 'string' || skills.trim().length > 500) {
+    return res.status(400).json({ error: 'Please check your name, age, playing role, and field lengths.' });
+  }
+
+  const id = `P_${crypto.randomUUID()}`;
+  await pool.query(
+    `INSERT INTO players (id, name, age, nationality, category, auction_tier, base_price, photo_mime, photo_data, prev_team, skills)
+     VALUES ($1, $2, $3, $4, $5, 'B', 0.01, $6, $7, $8, $9)`,
+    [id, name.trim(), Number(age), nationality.trim(), category, photo.mime, photo.data, prevTeam.trim(), skills.trim()]
+  );
+  res.status(201).json({ success: true, message: 'Registration submitted successfully.' });
+}));
+
 app.post('/api/auction/bid', requireRole('admin'), asyncRoute(async (req, res) => {
   const { playerId, teamId, incrementRupees } = req.body || {};
   const increment = Number(incrementRupees);
@@ -584,6 +822,11 @@ app.post('/api/auction/bid', requireRole('admin'), asyncRoute(async (req, res) =
     );
     const spent = Number(spentResult.rows[0].spent);
     const currentBid = player.current_bid === null ? Number(player.base_price) : Number(player.current_bid);
+    const expectedIncrement = auctionBidIncrement(currentBid);
+    if (increment !== expectedIncrement) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The bid increment changed. Refresh the auction and try again.' });
+    }
     const nextBid = currentBid + increment / 100000;
     if (nextBid > Number(team.budget_lakhs) - spent) {
       await client.query('ROLLBACK');
@@ -778,6 +1021,184 @@ app.post('/api/auction/unsold', requireRole('admin'), asyncRoute(async (req, res
   res.json({ success: true });
 }));
 
+app.get('/api/matches', requireRole('admin'), asyncRoute(async (req, res) => {
+  res.json(await listMatches());
+}));
+
+app.post('/api/matches', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { homeTeamId, awayTeamId, scheduledAt, venue = '' } = req.body || {};
+  const scheduledDate = typeof scheduledAt === 'string' ? new Date(scheduledAt) : null;
+  if (typeof homeTeamId !== 'string' || typeof awayTeamId !== 'string' || homeTeamId === awayTeamId ||
+      !scheduledDate || !Number.isFinite(scheduledDate.getTime()) ||
+      typeof venue !== 'string' || venue.trim().length > 120) {
+    return res.status(400).json({ error: 'Choose two different teams, a valid date and time, and a venue under 120 characters.' });
+  }
+  const id = `M_${crypto.randomUUID()}`;
+  await pool.query(
+    `INSERT INTO matches (id, home_team_id, away_team_id, scheduled_at, venue)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim()]
+  );
+  res.status(201).json((await listMatches()).find((match) => match.id === id));
+}));
+
+app.delete('/api/matches/:id', requireRole('admin'), asyncRoute(async (req, res) => {
+  const result = await pool.query('DELETE FROM matches WHERE id=$1 RETURNING id', [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: 'Match not found.' });
+  res.json({ success: true });
+}));
+
+app.put('/api/matches/:id', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { homeTeamId, awayTeamId, scheduledAt, venue = '' } = req.body || {};
+  const scheduledDate = typeof scheduledAt === 'string' ? new Date(scheduledAt) : null;
+  if (typeof homeTeamId !== 'string' || typeof awayTeamId !== 'string' || homeTeamId === awayTeamId ||
+      !scheduledDate || !Number.isFinite(scheduledDate.getTime()) ||
+      typeof venue !== 'string' || venue.trim().length > 120) {
+    return res.status(400).json({ error: 'Choose two different teams, a valid date and time, and a venue under 120 characters.' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const matchResult = await client.query(
+      'SELECT status FROM matches WHERE id=$1 FOR UPDATE',
+      [req.params.id]
+    );
+    if (!matchResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+    if (!['scheduled', 'cancelled'].includes(matchResult.rows[0].status)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Only scheduled or cancelled matches can be rescheduled.' });
+    }
+    await client.query(
+      `UPDATE matches SET home_team_id=$1, away_team_id=$2, scheduled_at=$3, venue=$4,
+        home_score=0, away_score=0, updated_at=NOW() WHERE id=$5`,
+      [homeTeamId, awayTeamId, scheduledDate.toISOString(), venue.trim(), req.params.id]
+    );
+    await client.query('DELETE FROM match_score_events WHERE match_id=$1', [req.params.id]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
+app.put('/api/matches/:id/status', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { status } = req.body || {};
+  if (!['scheduled', 'live', 'completed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ error: 'Choose a valid match status.' });
+  }
+  const result = await pool.query(
+    'UPDATE matches SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING id',
+    [status, req.params.id]
+  );
+  if (!result.rowCount) return res.status(404).json({ error: 'Match not found.' });
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
+app.post('/api/matches/:id/events', requireRole('admin'), asyncRoute(async (req, res) => {
+  const { teamId, playerId = null, type, points } = req.body || {};
+  const playerEvent = ['raid', 'tackle', 'bonus'].includes(type);
+  const teamEvent = ['all_out', 'technical'].includes(type);
+  if (typeof teamId !== 'string' || (!playerEvent && !teamEvent) ||
+      (playerEvent && typeof playerId !== 'string') || (teamEvent && playerId !== null)) {
+    return res.status(400).json({ error: 'Choose a participating team and a valid scoring event.' });
+  }
+  if (type === 'all_out' && points !== undefined && points !== 2 ||
+      type === 'bonus' && points !== undefined && points !== 1 ||
+      type === 'raid' && (!Number.isSafeInteger(points) || points < 1 || points > 7) ||
+      type === 'tackle' && (!Number.isSafeInteger(points) || points < 1 || points > 2) ||
+      type === 'technical' && (!Number.isSafeInteger(points) || points < 1 || points > 99)) {
+    return res.status(400).json({ error: 'Enter valid points for this scoring event.' });
+  }
+  const eventPoints = type === 'all_out' ? 2 : type === 'bonus' ? 1 : points;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const matchResult = await client.query(
+      'SELECT home_team_id, away_team_id, status FROM matches WHERE id=$1 FOR UPDATE',
+      [req.params.id]
+    );
+    if (!matchResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+    const match = matchResult.rows[0];
+    if (match.status !== 'live') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Scoring events can only be recorded during a live match.' });
+    }
+    const participatingTeams = [match.home_team_id, match.away_team_id];
+    if (!participatingTeams.includes(teamId)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Choose one of the teams in this match.' });
+    }
+    if (playerEvent) {
+      const playerResult = await client.query(
+        'SELECT team_id, category FROM players WHERE id=$1',
+        [playerId]
+      );
+      if (!playerResult.rowCount || playerResult.rows[0].team_id !== teamId) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Choose a player assigned to the selected team.' });
+      }
+    }
+
+    await client.query(
+      `INSERT INTO match_score_events (id, match_id, team_id, player_id, event_type, points)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [`E_${crypto.randomUUID()}`, req.params.id, teamId, playerEvent ? playerId : null, type, eventPoints]
+    );
+    await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
+app.delete('/api/matches/:id/events/:eventId', requireRole('admin'), asyncRoute(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const matchResult = await client.query(
+      'SELECT status FROM matches WHERE id=$1 FOR UPDATE',
+      [req.params.id]
+    );
+    if (!matchResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+    if (matchResult.rows[0].status !== 'live') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Scoring events can only be corrected during a live match.' });
+    }
+    const eventResult = await client.query(
+      'DELETE FROM match_score_events WHERE id=$1 AND match_id=$2 RETURNING id',
+      [req.params.eventId, req.params.id]
+    );
+    if (!eventResult.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Scoring event not found.' });
+    }
+    await client.query('UPDATE matches SET updated_at=NOW() WHERE id=$1', [req.params.id]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  res.json((await listMatches()).find((match) => match.id === req.params.id));
+}));
+
 app.get('/api/team/portal', requireRole('team'), asyncRoute(async (req, res) => {
   const teams = await listTeams();
   const team = teams.find((item) => item.id === req.session.user.teamId);
@@ -786,7 +1207,7 @@ app.get('/api/team/portal', requireRole('team'), asyncRoute(async (req, res) => 
     return res.status(401).json({ error: 'This team account no longer exists. Please sign in again.' });
   }
   const auctionSnapshot = await getAuctionSnapshot();
-  res.json({ team, players: await listPlayers(), teams, ...auctionSnapshot });
+  res.json({ team, players: await listPlayers(), teams, matches: await listMatches(), ...auctionSnapshot });
 }));
 
 app.get(['/index.html', '/admin.html', '/team.html'], (req, res) => {

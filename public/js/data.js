@@ -7,6 +7,7 @@ let playersCache = [];
 let sessionCache = null;
 let currentAuctionCache = null;
 let lastAuctionOutcomeCache = null;
+let matchesCache = [];
 
 async function apiRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -33,15 +34,17 @@ async function initData() {
 async function refreshData() {
   if (!sessionCache) return;
   if (sessionCache.type === 'admin') {
-    const [teams, players, auctionSnapshot] = await Promise.all([
+    const [teams, players, auctionSnapshot, matches] = await Promise.all([
       apiRequest('/api/teams'),
       apiRequest('/api/players'),
-      apiRequest('/api/auction/state')
+      apiRequest('/api/auction/state'),
+      apiRequest('/api/matches')
     ]);
     teamsCache = teams;
     playersCache = players;
     currentAuctionCache = auctionSnapshot.currentAuction;
     lastAuctionOutcomeCache = auctionSnapshot.lastOutcome;
+    matchesCache = matches;
     return;
   }
   if (sessionCache.type === 'team') {
@@ -50,6 +53,7 @@ async function refreshData() {
     playersCache = result.players;
     currentAuctionCache = result.currentAuction;
     lastAuctionOutcomeCache = result.lastOutcome;
+    matchesCache = result.matches || [];
   }
 }
 
@@ -59,14 +63,149 @@ function getTeamById(id) { return teamsCache.find((team) => team.id === id) || n
 function getPlayerById(id) { return playersCache.find((player) => player.id === id) || null; }
 function getCurrentAuction() { return currentAuctionCache; }
 function getLastAuctionOutcome() { return lastAuctionOutcomeCache; }
+function getMatches() { return matchesCache; }
 function getSession() { return sessionCache; }
 function setSession(user) { sessionCache = user; }
+
+function renderSeasonStats(containerId, ranking = document.getElementById(`${containerId}-ranking`)?.value || 'total') {
+  const container = document.getElementById(containerId);
+  const rankingOptions = {
+    total: { label: 'Total points', points: (stat) => stat.total },
+    tackle: { label: 'Tackle points', points: (stat) => stat.tacklePoints },
+    raidBonus: { label: 'Raid + bonus points', points: (stat) => stat.raidPoints + stat.bonusPoints }
+  };
+  if (!rankingOptions[ranking]) ranking = 'total';
+  const selectedRanking = rankingOptions[ranking];
+  const teams = getTeams();
+  const players = getPlayers();
+  const matches = getMatches();
+  const playerStats = new Map();
+  const standings = new Map(teams.map((team) => [team.id, {
+    team,
+    played: 0,
+    won: 0,
+    tied: 0,
+    lost: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+    leaguePoints: 0
+  }]));
+
+  matches.forEach((match) => {
+    if (!['live', 'completed'].includes(match.status)) return;
+    match.playerPoints.forEach((score) => {
+      const stat = playerStats.get(score.playerId) || {
+        playerId: score.playerId,
+        playerName: score.playerName,
+        teamId: score.teamId,
+        matches: new Set(),
+        raidPoints: 0,
+        tacklePoints: 0,
+        bonusPoints: 0,
+        otherPoints: 0,
+        total: 0
+      };
+      stat.matches.add(match.id);
+      stat.raidPoints += score.raidPoints;
+      stat.tacklePoints += score.tacklePoints;
+      stat.bonusPoints += score.bonusPoints;
+      stat.otherPoints += score.otherPoints;
+      stat.total += score.total;
+      playerStats.set(score.playerId, stat);
+    });
+
+    if (match.status !== 'completed') return;
+    const home = standings.get(match.homeTeam.id);
+    const away = standings.get(match.awayTeam.id);
+    if (!home || !away) return;
+    home.played += 1;
+    away.played += 1;
+    home.pointsFor += match.homeScore;
+    home.pointsAgainst += match.awayScore;
+    away.pointsFor += match.awayScore;
+    away.pointsAgainst += match.homeScore;
+    if (match.homeScore === match.awayScore) {
+      home.tied += 1;
+      away.tied += 1;
+      home.leaguePoints += 2;
+      away.leaguePoints += 2;
+    } else {
+      const winner = match.homeScore > match.awayScore ? home : away;
+      const loser = winner === home ? away : home;
+      const margin = Math.abs(match.homeScore - match.awayScore);
+      winner.won += 1;
+      winner.leaguePoints += 5;
+      loser.lost += 1;
+      if (margin <= 5) loser.leaguePoints += 1;
+    }
+  });
+
+  const playerRows = [...playerStats.values()]
+    .sort((a, b) => selectedRanking.points(b) - selectedRanking.points(a) ||
+      b.total - a.total || a.playerName.localeCompare(b.playerName))
+    .map((stat, index) => {
+      const player = players.find((item) => item.id === stat.playerId);
+      const team = teams.find((item) => item.id === stat.teamId) ||
+        teams.find((item) => item.id === player?.teamId);
+      return `<tr><td>${index + 1}</td><th scope="row">${escapeHtml(stat.playerName)}</th>
+        <td>${escapeHtml(team?.name || '—')}</td><td>${escapeHtml(player?.category || '—')}</td>
+        <td>${stat.matches.size}</td><td>${stat.raidPoints}</td><td>${stat.tacklePoints}</td>
+        <td>${stat.bonusPoints}</td><td>${stat.otherPoints}</td><td><strong>${stat.total}</strong></td>
+        <td><strong>${selectedRanking.points(stat)}</strong></td></tr>`;
+    }).join('') || '<tr><td colspan="11" class="season-stats-empty">No player points have been recorded yet.</td></tr>';
+
+  const teamRows = [...standings.values()]
+    .sort((a, b) => b.leaguePoints - a.leaguePoints || b.won - a.won ||
+      (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst) ||
+      b.pointsFor - a.pointsFor || a.team.name.localeCompare(b.team.name))
+    .map((row, index) => `<tr>
+      <td>${index + 1}</td><th scope="row">${escapeHtml(row.team.name)}</th>
+      <td>${row.played}</td><td>${row.won}</td><td>${row.tied}</td><td>${row.lost}</td>
+      <td>${row.pointsFor}</td><td>${row.pointsAgainst}</td>
+      <td>${row.pointsFor - row.pointsAgainst}</td><td><strong>${row.leaguePoints}</strong></td>
+    </tr>`).join('') || '<tr><td colspan="10" class="season-stats-empty">No teams are registered.</td></tr>';
+
+  container.innerHTML = `
+    <section class="card glass season-stats-card">
+      <div class="card-header">🏅 Player Statistics</div>
+      <p class="season-stats-note">Totals include recorded events from live and completed matches.</p>
+      <label class="season-stats-filter" for="${containerId}-ranking">Rank players by
+        <select id="${containerId}-ranking" onchange="renderSeasonStats('${containerId}', this.value)">
+          <option value="total" ${ranking === 'total' ? 'selected' : ''}>Total points</option>
+          <option value="tackle" ${ranking === 'tackle' ? 'selected' : ''}>Tackle points</option>
+          <option value="raidBonus" ${ranking === 'raidBonus' ? 'selected' : ''}>Raid + bonus points</option>
+        </select>
+      </label>
+      <div class="table-wrap">
+        <table class="data-table season-stats-table">
+          <thead><tr><th>#</th><th>Player</th><th>Team</th><th>Role</th><th>Matches</th>
+            <th>Raid</th><th>Tackle</th><th>Bonus</th><th>Other</th><th>Total</th>
+            <th>Ranked: ${escapeHtml(selectedRanking.label)}</th></tr></thead>
+          <tbody>${playerRows}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card glass season-stats-card">
+      <div class="card-header">🏆 League Points Table</div>
+      <p class="season-stats-note">Completed matches only. Win: 5 points · Tie: 2 points · Loss by 5 or fewer: 1 point · Loss by more than 5: 0 points.</p>
+      <div class="table-wrap">
+        <table class="data-table season-stats-table">
+          <thead><tr><th>#</th><th>Team</th><th>Played</th><th>Won</th><th>Tied</th>
+            <th>Lost</th><th>For</th><th>Against</th><th>Diff</th><th>Pts</th></tr></thead>
+          <tbody>${teamRows}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
 function clearSession() {
   sessionCache = null;
   teamsCache = [];
   playersCache = [];
   currentAuctionCache = null;
   lastAuctionOutcomeCache = null;
+  matchesCache = [];
 }
 
 async function createTeam(team) {
@@ -145,6 +284,57 @@ async function markPlayerUnsold(playerId) {
     body: JSON.stringify({ playerId })
   });
   await refreshData();
+}
+
+async function createMatch(match) {
+  await apiRequest('/api/matches', { method: 'POST', body: JSON.stringify(match) });
+  await refreshData();
+}
+
+async function deleteMatch(id) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await refreshData();
+}
+
+async function updateMatchSchedule(id, match) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(match)
+  });
+  await refreshData();
+}
+
+async function updateMatchStatus(id, status) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status })
+  });
+  await refreshData();
+}
+
+async function createMatchEvent(id, scoreEvent) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/events`, {
+    method: 'POST',
+    body: JSON.stringify(scoreEvent)
+  });
+  await refreshData();
+}
+
+async function deleteMatchEvent(id, eventId) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE'
+  });
+  await refreshData();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
 }
 
 function categoryBadge(cat) {

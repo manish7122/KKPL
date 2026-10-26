@@ -33,6 +33,12 @@
       <a class="nav-item" href="#" onclick="showTeamSection('all-results')">
         <span class="nav-icon">📋</span> All Results
       </a>
+      <a class="nav-item" href="#" onclick="showTeamSection('matches')">
+        <span class="nav-icon">🏟️</span> Matches
+      </a>
+      <a class="nav-item" href="#" onclick="showTeamSection('stats')">
+        <span class="nav-icon">📈</span> Player Stats & Points
+      </a>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">🚪 Logout</button>
@@ -104,6 +110,17 @@
           <tbody id="all-results-tbody"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- MATCH SCHEDULE AND SCORECARDS -->
+    <section class="section" id="section-matches">
+      <h2 class="section-heading">🏟️ Match Schedule & Scorecards</h2>
+      <div id="team-matches-list" class="match-list"></div>
+    </section>
+
+    <section class="section" id="section-stats">
+      <h2 class="section-heading">📈 Player Stats & League Points Table</h2>
+      <div id="team-season-stats" class="season-stats"></div>
     </section>
   </div>
 

@@ -16,7 +16,8 @@ function showSection(name) {
   if (el) el.classList.add('active');
   const titles = {
     dashboard: 'Dashboard', teams: 'Manage Teams',
-    players: 'Player Pool', auction: 'Live Auction', results: 'Auction Results'
+    players: 'Player Pool', auction: 'Live Auction', results: 'Auction Results',
+    matches: 'Match Schedule & Scorecards', stats: 'Player Stats & League Points'
   };
   document.getElementById('page-title').textContent = titles[name] || name;
   document.querySelectorAll('.nav-item').forEach(n => {
@@ -29,6 +30,8 @@ function showSection(name) {
   if (name === 'players')   renderPlayers();
   if (name === 'auction')   renderAuction();
   if (name === 'results')   renderResults();
+  if (name === 'matches')   renderAdminMatches();
+  if (name === 'stats')     renderSeasonStats('admin-season-stats');
 }
 
 // ---- DASHBOARD ----
@@ -298,6 +301,8 @@ function showPlayerOnBlock(playerId) {
   document.getElementById('bid-controls').style.display = 'flex';
   const displayedBid = p.currentBid === null ? p.soldPrice || p.basePrice : p.currentBid;
   document.getElementById('current-bid-val').textContent = formatPrice(displayedBid, 'Rs');
+  const bidIncrement = getBidIncrementRupees(displayedBid);
+  document.getElementById('bid-increment-value').textContent = `₹${bidIncrement.toLocaleString('en-IN')}`;
   document.getElementById('leading-team').textContent = p.status === 'Sold' && team
     ? `Sold to ${team.name}`
     : leadingTeam
@@ -309,14 +314,33 @@ function showPlayerOnBlock(playerId) {
   renderBidTeamButtons(p);
 }
 
+function getBidIncrementRupees(currentBidLakhs) {
+  const currentBidRupees = Math.round(currentBidLakhs * 100000);
+  if (currentBidRupees < 2000) return 50;
+  if (currentBidRupees < 4000) return 100;
+  if (currentBidRupees < 7000) return 200;
+  if (currentBidRupees < 10000) return 300;
+  if (currentBidRupees < 13000) return 400;
+  if (currentBidRupees < 15000) return 450;
+  if (currentBidRupees < 18000) return 500;
+  if (currentBidRupees < 20000) return 550;
+  if (currentBidRupees < 25000) return 600;
+  if (currentBidRupees < 30000) return 700;
+  if (currentBidRupees < 35000) return 800;
+  if (currentBidRupees < 40000) return 900;
+  return 1000;
+}
+
 function renderBidTeamButtons(player) {
   const container = document.getElementById('bid-team-buttons');
   container.replaceChildren();
+  const displayedBid = player.currentBid === null ? player.basePrice : player.currentBid;
+  const incrementRupees = getBidIncrementRupees(displayedBid);
   getTeams().forEach((team) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `bid-team-button${team.id === player.currentTeamId ? ' leading' : ''}`;
-    button.textContent = team.name;
+    button.innerHTML = `<span>${escapeHtml(team.name)}</span><strong>+₹${incrementRupees.toLocaleString('en-IN')}</strong>`;
     button.style.setProperty('--team-color', team.color);
     button.disabled = player.status !== 'Available';
     button.addEventListener('click', () => placeTeamBid(team.id));
@@ -328,11 +352,8 @@ async function placeTeamBid(teamId) {
   if (!currentAuctionPlayerId) { showToast('No player selected', true); return; }
   const player = getPlayerById(currentAuctionPlayerId);
   if (!player) return;
-  const incrementRupees = Number(document.getElementById('bid-increment').value);
-  if (!Number.isSafeInteger(incrementRupees) || incrementRupees < 1) {
-    showToast('Enter a whole-number bid increase in rupees.', true);
-    return;
-  }
+  const currentBid = player.currentBid === null ? player.basePrice : player.currentBid;
+  const incrementRupees = getBidIncrementRupees(currentBid);
   try {
     await submitTeamBid(currentAuctionPlayerId, teamId, incrementRupees);
   } catch (error) {
@@ -425,6 +446,31 @@ async function markUnsold() {
 function renderResults() {
   const players = getPlayers();
   const teams   = getTeams();
+  const soldPlayers = players.filter((player) => player.status === 'Sold' && Number.isFinite(player.soldPrice));
+  const highestByCategory = (category) => soldPlayers
+    .filter((player) => !category || player.category === category)
+    .sort((a, b) => b.soldPrice - a.soldPrice || a.name.localeCompare(b.name))[0] || null;
+  const highlightCards = [
+    { title: 'Most Expensive Player', player: highestByCategory(null) },
+    { title: 'Most Expensive Raider', player: highestByCategory('Raider') },
+    { title: 'Most Expensive Defender', player: highestByCategory('Defender') },
+    { title: 'Most Expensive All-Rounder', player: highestByCategory('All-Rounder') }
+  ];
+  document.getElementById('auction-highlights').innerHTML = highlightCards.map(({ title, player }) => {
+    if (!player) {
+      return `<article class="auction-highlight-card glass">
+        <span class="auction-highlight-label">${title}</span>
+        <strong class="auction-highlight-empty">No sold player yet</strong>
+      </article>`;
+    }
+    const team = teams.find((item) => item.id === player.teamId);
+    return `<article class="auction-highlight-card glass">
+      <span class="auction-highlight-label">${title}</span>
+      <strong class="auction-highlight-name">${escapeHtml(player.name)}</strong>
+      <span class="auction-highlight-team">${team ? escapeHtml(team.name) : '—'}</span>
+      <span class="auction-highlight-price">${escapeHtml(formatPrice(player.soldPrice))}</span>
+    </article>`;
+  }).join('');
 
   const sel = document.getElementById('results-team-filter');
   const prevVal = sel.value;
@@ -473,6 +519,16 @@ function exportCSV() {
   a.href = url; a.download = 'KKPL_Auction_Results.csv'; a.click();
   URL.revokeObjectURL(url);
   showToast('📥 CSV Exported!');
+}
+
+async function copyPlayerRegistrationLink() {
+  const link = new URL('/player-registration', window.location.origin).href;
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast('Player registration link copied.');
+  } catch (error) {
+    window.prompt('Copy and share this player registration link:', link);
+  }
 }
 
 // ---- TEAM MODAL ----
@@ -719,6 +775,301 @@ async function removePlayer(id) {
   }
   showToast(`🗑️ Player "${p.name}" removed`);
   renderPlayers();
+}
+
+function renderAdminMatches() {
+  const container = document.getElementById('admin-matches-list');
+  const matches = getMatches();
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-text">No matches scheduled yet. Add teams, then schedule your first match.</div></div>';
+    return;
+  }
+
+  container.innerHTML = matches.map((match) => {
+    const home = match.homeTeam;
+    const away = match.awayTeam;
+    const statusLabel = match.status[0].toUpperCase() + match.status.slice(1);
+    const playerTable = (team) => {
+      const scored = new Map(match.playerPoints.map((entry) => [entry.playerId, entry]));
+      const players = getPlayers().filter((player) => player.teamId === team.id);
+      if (!players.length) return '<p class="match-no-players">No players assigned to this team yet.</p>';
+      return `
+        <div class="match-stats-scroll"><table class="match-stats-table">
+          <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Bonus</th><th>Other</th><th>Total</th></tr></thead>
+          <tbody>${players.map((player) => {
+            const points = scored.get(player.id);
+            return `<tr><th scope="row">${escapeHtml(player.name)}</th>
+              <td>${points?.raidPoints || 0}</td><td>${points?.tacklePoints || 0}</td>
+              <td>${points?.bonusPoints || 0}</td><td>${points?.otherPoints || 0}</td>
+              <td><strong>${points?.total || 0}</strong></td></tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      `;
+    };
+    const extras = (teamId) => teamId === home.id ? match.extras.home : match.extras.away;
+    const teamPanel = (team) => `
+      <section class="match-points-team">
+        <h4>${escapeHtml(team.name)} — Player Points</h4>
+        ${playerTable(team)}
+        <p class="match-extras-line">Extras: All-outs <strong>${extras(team.id).allOut}</strong>
+          · Technical <strong>${extras(team.id).technical}</strong>
+          · Total <strong>${extras(team.id).total}</strong></p>
+      </section>
+    `;
+    const eventLabel = (event) => ({
+      raid: 'Raid', tackle: 'Tackle', bonus: 'Bonus', all_out: 'All-out',
+      technical: 'Technical / extra', legacy: 'Other (migrated)'
+    }[event.type] || event.type);
+
+    return `
+      <article class="match-card match-admin-card">
+        <div class="match-card-header">
+          <div>
+            <span class="match-status match-status-${escapeHtml(match.status)}">${escapeHtml(statusLabel)}</span>
+            <h3>${escapeHtml(new Date(match.scheduledAt).toLocaleString())}</h3>
+            <p class="match-venue">${escapeHtml(match.venue || 'Venue to be announced')}</p>
+          </div>
+          <div class="match-actions">
+            ${(match.status === 'scheduled' || match.status === 'cancelled')
+              ? `<button class="btn-icon" type="button" onclick="openMatchModal('${escapeHtml(match.id)}')">✏️ Edit Schedule</button>`
+              : ''}
+            ${match.status === 'scheduled'
+              ? `<button class="btn-icon match-action-live" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','live')">▶ Start Match</button>
+                 <button class="btn-icon danger" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','cancelled')">Cancel</button>`
+              : ''}
+            ${match.status === 'live'
+              ? `<button class="btn-icon match-action-finish" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','completed')">✓ Complete Match</button>`
+              : ''}
+            ${match.status === 'completed'
+              ? `<button class="btn-icon" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','live')">↻ Reopen Live</button>`
+              : ''}
+            ${match.status === 'cancelled'
+              ? `<button class="btn-icon" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','scheduled')">↻ Restore Match</button>`
+              : ''}
+            <button class="btn-icon danger" type="button" onclick="removeMatch('${escapeHtml(match.id)}')">🗑 Delete Match</button>
+          </div>
+        </div>
+        ${match.status === 'completed' ? `
+          <button class="match-scoreboard match-score-toggle" type="button"
+            aria-expanded="false" aria-controls="admin-match-details-${escapeHtml(match.id)}"
+            aria-label="Show player points for ${escapeHtml(home.name)} versus ${escapeHtml(away.name)}"
+            onclick="toggleMatchDetails(event,'admin-match-details-${escapeHtml(match.id)}')">
+            <span class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
+              <span class="match-team-name">${escapeHtml(home.name)}</span>
+              <span class="match-score-value">${match.homeScore}</span>
+            </span>
+            <span class="match-score-separator">–</span>
+            <span class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
+              <span class="match-team-name">${escapeHtml(away.name)}</span>
+              <span class="match-score-value">${match.awayScore}</span>
+            </span>
+          </button>
+          <p class="match-score-hint">Click the score to view player points</p>
+          <div id="admin-match-details-${escapeHtml(match.id)}" class="match-player-points match-readonly-points" hidden>
+            ${teamPanel(home)}${teamPanel(away)}
+          </div>
+        ` : `
+          <div class="match-scoreboard">
+            <div class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
+              <div class="match-team-name">${escapeHtml(home.name)}</div>
+              <div class="match-score-value">${match.homeScore}</div>
+            </div>
+            <span class="match-score-separator">–</span>
+            <div class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
+              <div class="match-team-name">${escapeHtml(away.name)}</div>
+              <div class="match-score-value">${match.awayScore}</div>
+            </div>
+          </div>
+          ${match.status === 'live' ? `
+            <div class="match-player-points match-readonly-points">${teamPanel(home)}${teamPanel(away)}</div>
+          ` : ''}
+        `}
+        ${match.status === 'live' ? `
+          <form id="match-event-form-${escapeHtml(match.id)}" class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
+            <label>Team
+              <select name="teamId" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
+                <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
+                <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
+              </select>
+            </label>
+            <label>Event
+              <select name="type" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
+                <option value="raid">Raid points</option><option value="tackle">Tackle points</option>
+                <option value="bonus">Bonus point</option><option value="all_out">All-out (2 points)</option>
+                <option value="technical">Technical / extra points</option>
+              </select>
+            </label>
+            <label data-player-control>Player <select name="playerId" required></select></label>
+            <label data-points-control>Points <input name="points" type="number" min="1" max="5" value="1" required /></label>
+            <button class="btn-primary" type="submit">Add scoring event</button>
+          </form>
+          <section class="match-event-history">
+            <h4>Scoring event history</h4>
+            ${match.events.length ? match.events.map((event) => `
+              <div class="match-event-row">
+                <span><strong>${escapeHtml(eventLabel(event))}</strong> · ${escapeHtml(event.teamName)}
+                  ${event.playerName ? `· ${escapeHtml(event.playerName)}` : ''} · ${event.points} pts</span>
+                <button class="btn-icon danger" type="button" onclick="removeMatchEvent('${escapeHtml(match.id)}','${escapeHtml(event.id)}')">Remove</button>
+              </div>
+            `).join('') : '<p class="match-no-players">No scoring events yet.</p>'}
+          </section>
+        ` : ''}
+      </article>
+    `;
+  }).join('');
+  matches.filter((match) => match.status === 'live').forEach((match) => updateMatchEventFields(match.id));
+}
+
+function openMatchModal(matchId) {
+  const form = document.getElementById('match-form');
+  const homeSelect = document.getElementById('match-home-team');
+  const awaySelect = document.getElementById('match-away-team');
+  const teams = getTeams();
+  if (teams.length < 2) {
+    showToast('Add at least two teams before scheduling a match.', true);
+    return;
+  }
+
+  form.reset();
+  document.getElementById('match-id').value = '';
+  document.getElementById('match-modal-title').textContent = 'Schedule Match';
+  const options = teams.map((team) =>
+    `<option value="${escapeHtml(team.id)}">${escapeHtml(team.name)}</option>`
+  ).join('');
+  homeSelect.innerHTML = options;
+  awaySelect.innerHTML = options;
+  if (teams[1]) awaySelect.value = teams[1].id;
+
+  if (matchId) {
+    const match = getMatches().find((item) => item.id === matchId);
+    if (!match) return;
+    document.getElementById('match-id').value = match.id;
+    document.getElementById('match-modal-title').textContent = 'Edit Match Schedule';
+    homeSelect.value = match.homeTeam.id;
+    awaySelect.value = match.awayTeam.id;
+    document.getElementById('match-venue').value = match.venue || '';
+    const localDate = new Date(match.scheduledAt);
+    localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+    document.getElementById('match-date').value = localDate.toISOString().slice(0, 16);
+  }
+  openModal('match-modal');
+}
+
+async function saveMatch(event) {
+  event.preventDefault();
+  const id = document.getElementById('match-id').value;
+  const scheduledAt = document.getElementById('match-date').value;
+  const scheduledDate = new Date(scheduledAt);
+  if (!scheduledAt || !Number.isFinite(scheduledDate.getTime())) {
+    showToast('Choose a valid match date and time.', true);
+    return;
+  }
+  const match = {
+    homeTeamId: document.getElementById('match-home-team').value,
+    awayTeamId: document.getElementById('match-away-team').value,
+    scheduledAt: scheduledDate.toISOString(),
+    venue: document.getElementById('match-venue').value.trim()
+  };
+  if (match.homeTeamId === match.awayTeamId) {
+    showToast('Choose two different teams for the match.', true);
+    return;
+  }
+  try {
+    if (id) await updateMatchSchedule(id, match);
+    else await createMatch(match);
+  } catch (error) {
+    showRequestError(error);
+    return;
+  }
+  closeModal('match-modal');
+  renderAdminMatches();
+  showToast(id ? 'Match schedule updated.' : 'Match scheduled.');
+}
+
+async function setMatchStatus(matchId, status) {
+  try {
+    await updateMatchStatus(matchId, status);
+    renderAdminMatches();
+    showToast(`Match marked ${status}.`);
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+function toggleMatchDetails(event, detailsId) {
+  const details = document.getElementById(detailsId);
+  if (!details) return;
+  details.hidden = !details.hidden;
+  event.currentTarget.setAttribute('aria-expanded', String(!details.hidden));
+}
+
+async function removeMatch(matchId) {
+  const match = getMatches().find((item) => item.id === matchId);
+  if (!match) return;
+  if (!confirm(`Delete the match between ${match.homeTeam.name} and ${match.awayTeam.name}?\n\nThis also deletes its score events and cannot be undone.`)) return;
+  try {
+    await deleteMatch(matchId);
+    renderAdminMatches();
+    showToast('Match and its score events deleted.');
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+function updateMatchEventFields(matchId) {
+  const form = document.getElementById(`match-event-form-${matchId}`);
+  if (!form) return;
+  const type = form.elements.type.value;
+  const playerControl = form.querySelector('[data-player-control]');
+  const pointsControl = form.querySelector('[data-points-control]');
+  const playerSelect = form.elements.playerId;
+  const teamId = form.elements.teamId.value;
+  const requiresPlayer = ['raid', 'tackle', 'bonus'].includes(type);
+  const teamPlayers = getPlayers().filter((player) => player.teamId === teamId);
+  playerControl.hidden = !requiresPlayer;
+  playerSelect.required = requiresPlayer;
+  playerSelect.innerHTML = teamPlayers.map((player) =>
+    `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)} (${escapeHtml(player.category)})</option>`
+  ).join('') || '<option value="">No players assigned to this team</option>';
+  const fixedPoints = type === 'all_out' || type === 'bonus';
+  pointsControl.hidden = fixedPoints;
+  form.elements.points.required = !fixedPoints;
+  if (type === 'technical') {
+    form.elements.points.max = '99';
+    form.elements.points.value = '1';
+  } else {
+    form.elements.points.max = type === 'raid' ? '7' : '2';
+    if (fixedPoints) form.elements.points.value = type === 'all_out' ? '2' : '1';
+  }
+}
+
+async function saveMatchEvent(event, matchId) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const type = form.elements.type.value;
+  try {
+    await createMatchEvent(matchId, {
+      teamId: form.elements.teamId.value,
+      type,
+      playerId: ['raid', 'tackle', 'bonus'].includes(type) ? form.elements.playerId.value : null,
+      points: ['raid', 'tackle', 'technical'].includes(type) ? Number(form.elements.points.value) : undefined
+    });
+    renderAdminMatches();
+    showToast('Scoring event added.');
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+async function removeMatchEvent(matchId, eventId) {
+  if (!confirm('Remove this scoring event and recalculate the match score?')) return;
+  try {
+    await deleteMatchEvent(matchId, eventId);
+    renderAdminMatches();
+    showToast('Scoring event removed and score recalculated.');
+  } catch (error) {
+    showRequestError(error);
+  }
 }
 
 // ---- MODAL UTILS ----

@@ -29,7 +29,9 @@ function showTeamSection(name) {
     overview: 'Team Overview',
     squad: 'My Squad',
     'auction-live': 'Auction Status',
-    'all-results': 'Full Auction Results'
+    'all-results': 'Full Auction Results',
+    matches: 'Match Schedule & Scorecards',
+    stats: 'Player Stats & League Points'
   };
   document.getElementById('team-page-title').textContent = titles[name] || name;
 
@@ -43,6 +45,8 @@ function showTeamSection(name) {
   if (name === 'squad') renderSquad('all');
   if (name === 'auction-live') renderAuctionStatus();
   if (name === 'all-results') renderAllResults();
+  if (name === 'matches') renderTeamMatches();
+  if (name === 'stats') renderSeasonStats('team-season-stats');
 }
 
 // ---- OVERVIEW ----
@@ -308,6 +312,115 @@ function renderAllResults() {
     }).join('');
 }
 
+function renderTeamMatches() {
+  const container = document.getElementById('team-matches-list');
+  const matches = getMatches();
+  const groups = [
+    { status: 'live', title: '🔴 Live Matches' },
+    { status: 'scheduled', title: '📅 Upcoming Schedule' },
+    { status: 'completed', title: '✅ Completed Matches' },
+    { status: 'cancelled', title: 'Cancelled Matches' }
+  ];
+  const sections = groups.map(({ status, title }) => {
+    const groupedMatches = matches.filter((match) => match.status === status);
+    if (!groupedMatches.length) return '';
+    return `
+      <section class="match-group">
+        <h3 class="match-group-heading">${title}</h3>
+        <div class="match-list">
+          ${groupedMatches.map((match) => {
+            const home = match.homeTeam;
+            const away = match.awayTeam;
+            const playerRows = (team) => {
+              const scored = new Map(match.playerPoints.map((entry) => [entry.playerId, entry]));
+              const players = getPlayers().filter((player) => player.teamId === team.id);
+              if (!players.length) return '<p class="match-no-players">No players assigned to this team yet.</p>';
+              return `
+                <div class="match-stats-scroll"><table class="match-stats-table">
+                  <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Bonus</th><th>Other</th><th>Total</th></tr></thead>
+                  <tbody>${players.map((player) => {
+                    const points = scored.get(player.id);
+                    return `<tr><th scope="row">${escapeHtml(player.name)}</th>
+                      <td>${points?.raidPoints || 0}</td><td>${points?.tacklePoints || 0}</td>
+                      <td>${points?.bonusPoints || 0}</td><td>${points?.otherPoints || 0}</td>
+                      <td><strong>${points?.total || 0}</strong></td></tr>`;
+                  }).join('')}</tbody>
+                </table></div>
+              `;
+            };
+            const extras = (team) => team.id === home.id ? match.extras.home : match.extras.away;
+            const teamPanel = (team) => `
+              <section class="match-points-team">
+                <h4>${escapeHtml(team.name)} — Player Points</h4>
+                ${playerRows(team)}
+                <p class="match-extras-line">Extras: All-outs <strong>${extras(team).allOut}</strong>
+                  · Technical <strong>${extras(team).technical}</strong>
+                  · Total <strong>${extras(team).total}</strong></p>
+              </section>
+            `;
+            const hasScore = status === 'live' || status === 'completed';
+            return `
+              <article class="match-card match-team-card">
+                <div class="match-card-header">
+                  <div>
+                    <span class="match-status match-status-${escapeHtml(match.status)}">${escapeHtml(status[0].toUpperCase() + status.slice(1))}</span>
+                    <h3>${escapeHtml(new Date(match.scheduledAt).toLocaleString())}</h3>
+                    <p class="match-venue">${escapeHtml(match.venue || 'Venue to be announced')}</p>
+                  </div>
+                </div>
+                ${status === 'completed' ? `
+                  <button class="match-scoreboard match-score-toggle" type="button"
+                    aria-expanded="false" aria-controls="team-match-details-${escapeHtml(match.id)}"
+                    aria-label="Show player points for ${escapeHtml(home.name)} versus ${escapeHtml(away.name)}"
+                    onclick="toggleTeamMatchDetails(event,'team-match-details-${escapeHtml(match.id)}')">
+                    <span class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
+                      <span class="match-team-name">${escapeHtml(home.name)}</span>
+                      <span class="match-score-value">${match.homeScore}</span>
+                    </span>
+                    <span class="match-score-separator">–</span>
+                    <span class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
+                      <span class="match-team-name">${escapeHtml(away.name)}</span>
+                      <span class="match-score-value">${match.awayScore}</span>
+                    </span>
+                  </button>
+                  <p class="match-score-hint">Click the score to view player points</p>
+                  <div id="team-match-details-${escapeHtml(match.id)}" class="match-player-points match-readonly-points" hidden>
+                    ${teamPanel(home)}${teamPanel(away)}
+                  </div>
+                ` : `
+                  <div class="match-scoreboard">
+                    <div class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
+                      <div class="match-team-name">${escapeHtml(home.name)}</div>
+                      <div class="match-score-value">${hasScore ? match.homeScore : '—'}</div>
+                    </div>
+                    <span class="match-score-separator">–</span>
+                    <div class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
+                      <div class="match-team-name">${escapeHtml(away.name)}</div>
+                      <div class="match-score-value">${hasScore ? match.awayScore : '—'}</div>
+                    </div>
+                  </div>
+                  ${status === 'live' ? `
+                    <div class="match-player-points match-readonly-points">${teamPanel(home)}${teamPanel(away)}</div>
+                  ` : ''}
+                `}
+              </article>
+            `;
+          }).join('')}
+        </div>
+      </section>
+    `;
+  }).join('');
+
+  container.innerHTML = sections || '<div class="empty-state"><div class="empty-icon">🏟️</div><div class="empty-text">No match schedule is available yet.</div></div>';
+}
+
+function toggleTeamMatchDetails(event, detailsId) {
+  const details = document.getElementById(detailsId);
+  if (!details) return;
+  details.hidden = !details.hidden;
+  event.currentTarget.setAttribute('aria-expanded', String(!details.hidden));
+}
+
 // ---- UTILS ----
 function hexToRgb(hex) {
   const r = parseInt(hex.slice(1,3), 16);
@@ -350,6 +463,8 @@ function hexToRgb(hex) {
           showAuctionOutcome(outcome);
         }
         if (liveSection.classList.contains('active')) renderAuctionStatus();
+        if (document.getElementById('section-matches').classList.contains('active')) renderTeamMatches();
+        if (document.getElementById('section-stats').classList.contains('active')) renderSeasonStats('team-season-stats');
       } catch (error) {
         showRequestError(error);
       } finally {

@@ -927,6 +927,180 @@ body.auction-result-open { overflow: hidden; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ======= MATCH SCHEDULE AND SCORECARDS ======= */
+.match-list { display: grid; gap: 18px; }
+.match-group { margin-bottom: 28px; }
+.match-group-heading {
+  margin-bottom: 14px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.match-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+}
+.match-admin-card { display: grid; gap: 20px; }
+.match-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.match-card-header h3 {
+  margin-top: 9px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+}
+.match-venue { margin-top: 3px; color: var(--text-muted); font-size: 0.82rem; }
+.match-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.match-status-live { color: var(--success); border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.1); }
+.match-status-scheduled { color: var(--available); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+.match-status-completed { color: #93c5fd; border-color: rgba(59,130,246,0.35); background: rgba(59,130,246,0.08); }
+.match-status-cancelled { color: var(--danger); border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.08); }
+.match-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.match-action-live { color: var(--success); }
+.match-action-finish { color: var(--orange); }
+.match-score-form { display: grid; gap: 18px; }
+.match-scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.2);
+}
+.match-score-toggle { width: 100%; border: 1px solid var(--border); color: inherit; font: inherit; cursor: pointer; }
+.match-score-toggle:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.match-score-hint { margin: 6px 0 0; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
+.match-player-points[hidden] { display: none; }
+.match-side {
+  min-width: 0;
+  padding: 12px;
+  border-top: 3px solid var(--match-team-color, var(--orange));
+  text-align: center;
+}
+.match-team-name {
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.match-score-input,
+.match-score-value {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.8rem;
+  line-height: 1.1;
+  text-align: center;
+}
+.match-score-input {
+  max-width: 150px;
+  margin-right: auto;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+}
+.match-score-input:focus,
+.match-player-row input:focus { outline: 1px solid var(--orange); }
+.match-score-input:disabled { opacity: 0.55; }
+.match-score-separator { color: var(--text-muted); font-family: 'Bebas Neue', sans-serif; font-size: 2rem; }
+.match-player-points { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.match-points-team {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.15);
+}
+.match-points-team h4 {
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.4px;
+}
+.match-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+.match-player-row input {
+  width: 76px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: center;
+}
+.match-player-result strong { color: var(--success); white-space: nowrap; }
+.match-no-players { color: var(--text-muted); font-size: 0.8rem; }
+.match-save-score { width: auto; justify-self: end; padding: 10px 22px; }
+.match-readonly-points { margin-top: 16px; }
+.match-stats-scroll { overflow-x: auto; }
+.match-stats-table { width: 100%; border-collapse: collapse; color: var(--text-primary); font-size: 0.78rem; }
+.match-stats-table th,
+.match-stats-table td { padding: 8px 7px; border-top: 1px solid var(--border); text-align: right; white-space: nowrap; }
+.match-stats-table thead th { color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; }
+.match-stats-table th:first-child { text-align: left; }
+.match-stats-table tbody th { font-weight: 500; }
+.match-stats-table tbody td:last-child strong { color: var(--success); }
+.match-extras-line { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.78rem; }
+.match-extras-line strong { color: var(--text-primary); }
+.match-event-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; align-items: end; gap: 12px; margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(0,0,0,0.15); }
+.match-event-form label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; }
+.match-event-form [hidden] { display: none; }
+.match-event-form select,
+.match-event-form input { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-card); color: var(--text-primary); font: inherit; }
+.match-event-form button { white-space: nowrap; padding: 10px 14px; }
+.match-event-history { margin-top: 16px; }
+.match-event-history h4 { margin-bottom: 8px; color: var(--text-secondary); font-family: 'Rajdhani', sans-serif; }
+.match-event-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--border); color: var(--text-primary); font-size: 0.8rem; }
+.match-event-row .btn-icon { flex: 0 0 auto; }
+.season-stats { display: grid; gap: 20px; }
+.season-stats-card { min-width: 0; padding: 20px; }
+.season-stats-card .card-header { margin-bottom: 8px; }
+.season-stats-note { margin: 0 0 14px; color: var(--text-muted); font-size: 0.8rem; line-height: 1.5; }
+.season-stats-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--text-secondary); font-size: 0.82rem; }
+.season-stats-filter select { min-width: 200px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-card); color: var(--text-primary); font: inherit; }
+.season-stats-card .table-wrap { margin: 0; overflow-x: auto; }
+.season-stats-table { min-width: 900px; }
+.season-stats-table th,
+.season-stats-table td { white-space: nowrap; }
+.season-stats-table tbody td:last-child strong { color: var(--success); }
+.season-stats-empty { padding: 24px !important; color: var(--text-muted); text-align: center !important; }
+
 /* ======= RESPONSIVE ======= */
 @media (max-width: 900px) {
   .two-col { grid-template-columns: 1fr; }
@@ -946,6 +1120,19 @@ body.auction-result-open { overflow: hidden; }
 }
 
 @media (max-width: 600px) {
+  .match-card { padding: 16px; }
+  .match-card-header { flex-direction: column; }
+  .match-actions { justify-content: flex-start; }
+  .match-scoreboard { gap: 6px; padding: 10px; }
+  .match-side { padding: 8px 3px; }
+  .match-team-name { font-size: 0.95rem; }
+  .match-score-input, .match-score-value { font-size: 2.2rem; }
+  .match-player-points { grid-template-columns: 1fr; }
+  .match-event-form { grid-template-columns: 1fr 1fr; }
+  .match-event-form button { grid-column: 1 / -1; }
+  .match-event-row { align-items: flex-start; }
+  .season-stats-filter { align-items: flex-start; flex-direction: column; }
+  .season-stats-filter select { width: 100%; }
   .auction-result-overlay { padding: 14px; }
   .auction-result-card { flex-direction: column; gap: 24px; padding: 52px 22px 28px; }
   .auction-result-photo-wrap { width: min(64vw, 240px); border-width: 8px; }

@@ -36,6 +36,12 @@
       <a class="nav-item" href="#" onclick="showSection('results')">
         <span class="nav-icon">📋</span> Auction Results
       </a>
+      <a class="nav-item" href="#" onclick="showSection('matches')">
+        <span class="nav-icon">🏟️</span> Matches
+      </a>
+      <a class="nav-item" href="#" onclick="showSection('stats')">
+        <span class="nav-icon">📈</span> Player Stats & Points
+      </a>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="logout()">🚪 Logout</button>
@@ -163,11 +169,11 @@
               <span class="current-bid-val" id="current-bid-val">₹0L</span>
             </div>
             <div class="leading-team" id="leading-team">No team has bid yet</div>
-            <label class="bid-increment-control" for="bid-increment">
-              <span>Bid increase (₹)</span>
-              <input type="number" id="bid-increment" value="1000" min="1" step="1" inputmode="numeric"/>
-            </label>
-            <div class="bid-increment-hint">Each team button adds this amount to the current bid.</div>
+            <div class="bid-increment-control">
+              <span>Next bid increase</span>
+              <strong id="bid-increment-value">₹50</strong>
+            </div>
+            <div class="bid-increment-hint">The increase is set automatically based on the current bid.</div>
             <div class="bid-team-buttons" id="bid-team-buttons" aria-label="Place a bid for a team"></div>
             <div class="bid-correction-actions">
               <button type="button" class="btn-undo-bid" id="undo-bid-button" onclick="undoLastBid()">↶ Undo Last Bid</button>
@@ -200,7 +206,14 @@
 
     <!-- RESULTS -->
     <section class="section" id="section-results">
-      <h2 class="section-heading">📋 Auction Results</h2>
+      <div class="section-top">
+        <h2 class="section-heading">📋 Auction Results</h2>
+        <div class="auction-registration-actions">
+          <a class="btn-export" href="/player-registration" target="_blank" rel="noopener">Open Registration Form</a>
+          <button class="btn-export" type="button" onclick="copyPlayerRegistrationLink()">Copy Registration Link</button>
+        </div>
+      </div>
+      <div id="auction-highlights" class="auction-highlights"></div>
       <div class="results-filter">
         <select id="results-team-filter" onchange="renderResults()">
           <option value="">All Teams</option>
@@ -218,6 +231,55 @@
         </table>
       </div>
     </section>
+
+    <!-- MATCHES -->
+    <section class="section" id="section-matches">
+      <div class="section-top">
+        <h2 class="section-heading">Match Schedule & Live Scorecards</h2>
+        <button class="btn-primary" onclick="openMatchModal()">+ Schedule Match</button>
+      </div>
+      <div id="admin-matches-list" class="match-list"></div>
+    </section>
+
+    <section class="section" id="section-stats">
+      <h2 class="section-heading">📈 Player Stats & League Points Table</h2>
+      <div id="admin-season-stats" class="season-stats"></div>
+    </section>
+  </div>
+
+  <!-- Modal: Schedule Match -->
+  <div class="modal-overlay" id="match-modal">
+    <div class="modal-box glass">
+      <div class="modal-header">
+        <h3 id="match-modal-title">Schedule Match</h3>
+        <button class="modal-close" type="button" onclick="closeModal('match-modal')">✕</button>
+      </div>
+      <form id="match-form" onsubmit="saveMatch(event)">
+        <input type="hidden" id="match-id"/>
+        <div class="form-grid">
+          <div class="field">
+            <label for="match-home-team">Home Team *</label>
+            <select id="match-home-team" required></select>
+          </div>
+          <div class="field">
+            <label for="match-away-team">Away Team *</label>
+            <select id="match-away-team" required></select>
+          </div>
+          <div class="field">
+            <label for="match-date">Date and Time *</label>
+            <input type="datetime-local" id="match-date" required/>
+          </div>
+          <div class="field">
+            <label for="match-venue">Venue</label>
+            <input type="text" id="match-venue" maxlength="120" placeholder="Stadium or location"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('match-modal')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Match</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Modal: Add/Edit Team -->

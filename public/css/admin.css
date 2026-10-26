@@ -3,6 +3,53 @@
    ============================================ */
 
 /* ======= AUCTION CONSOLE ======= */
+.auction-registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auction-registration-actions a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.auction-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.auction-highlight-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius);
+}
+
+.auction-highlight-label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.auction-highlight-name {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+}
+
+.auction-highlight-team,
+.auction-highlight-empty { color: var(--text-secondary); font-size: 0.8rem; }
+.auction-highlight-price { color: var(--success); font-weight: 700; }
+
 .auction-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -207,17 +254,7 @@
   font-size: 0.82rem;
 }
 
-.bid-increment-control input {
-  width: 150px;
-  padding: 9px 12px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font: inherit;
-}
-
-.bid-increment-control input:focus { outline: 1px solid var(--success); }
+.bid-increment-control strong { color: var(--orange); font-size: 1rem; }
 
 .bid-increment-hint {
   margin-top: -8px;
@@ -232,6 +269,11 @@
 }
 
 .bid-team-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
   min-height: 52px;
   padding: 10px 14px;
   background: color-mix(in srgb, var(--team-color) 14%, transparent);
@@ -244,6 +286,7 @@
   font-weight: 600;
   transition: transform 0.2s, background 0.2s, border-color 0.2s;
 }
+.bid-team-button strong { color: var(--orange); white-space: nowrap; font-size: 0.9em; }
 
 .bid-team-button:hover:not(:disabled) {
   transform: translateY(-2px);

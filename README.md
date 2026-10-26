@@ -46,3 +46,17 @@ Change demo team passwords in the admin panel before using the app with real acc
 ## Player auction tiers
 
 When adding a player, assign an auction tier: **A** for top players, **B** for middle-tier players, or **C** for developing/lower-tier players. This is separate from the player's playing role (Raider, Defender, or All-Rounder). Use the tier selector in the admin auction queue to list players from one tier. Existing players are assigned to Tier B during the database migration and can be reclassified from the player editor.
+
+## Public player registration
+
+Admins can open or copy the public `/player-registration` link from Auction Results and share it with players. The form asks for a required player photo (JPG, PNG, or WebP up to 2 MB), name, age, nationality, playing role, previous team, and skills. Submissions are added immediately as available Tier B players with a ₹1,000 base price; admins can edit those auction settings and player details in the player list. The public endpoint validates submissions and limits repeated requests.
+
+## Auction bid increments
+
+During live bidding, each team button shows the automatic increase that will be added to the current bid: ₹50 below ₹2,000; ₹100 from ₹2,000; ₹200 from ₹4,000; ₹300 from ₹7,000; ₹400 from ₹10,000; ₹450 from ₹13,000; ₹500 from ₹15,000; ₹550 from ₹18,000; ₹600 from ₹20,000; ₹700 from ₹25,000; ₹800 from ₹30,000; ₹900 from ₹35,000; and ₹1,000 from ₹40,000. The server checks each bid against the same schedule.
+
+## Match schedule and scorecards
+
+Admins can schedule matches between two teams, set the match date, time, and venue, and start or complete a match. During a live match, record raid, tackle, and bonus points against eligible players, or add all-out and technical points as team extras. Team totals are calculated automatically from player points and extras; admins can remove individual live events to correct mistakes and delete matches in any status. Completed match cards show the team score first; select the score to expand player points and extras. Team accounts can view the schedule, live scorecards, player raid/tackle/bonus/other totals, team extras, and completed results. Live match views refresh automatically while the team portal is open. Existing manual scorecards are migrated as technical team points and legacy player points.
+
+The **Player Stats & Points** section aggregates player scoring from live and completed matches with recorded events. League standings use completed matches and award 5 points for a win, 2 for a tie, 1 for a loss by 5 or fewer points, and 0 for a loss by more than 5. All registered teams appear in the table, including teams with no completed matches.
