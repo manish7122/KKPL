@@ -139,6 +139,7 @@
               <th>#</th>
               <th>Name</th>
               <th>Playing Role</th>
+              <th>Position</th>
               <th>Auction Tier</th>
               <th>Base Price (₹)</th>
               <th>Age</th>
@@ -376,11 +377,17 @@
           </div>
           <div class="field">
             <label>Playing Role *</label>
-            <select id="p-category" required>
+            <select id="p-category" required onchange="updatePlayerPositionOptions()">
               <option value="">Select Playing Role</option>
               <option value="Raider">Raider</option>
               <option value="Defender">Defender</option>
               <option value="All-Rounder">All-Rounder</option>
+            </select>
+          </div>
+          <div class="field" id="p-position-field" hidden>
+            <label for="p-position">Playing Position *</label>
+            <select id="p-position">
+              <option value="">Select Playing Position</option>
             </select>
           </div>
           <div class="field">

@@ -154,7 +154,7 @@ function renderPlayers() {
   const tbody = document.getElementById('players-tbody');
 
   tbody.innerHTML = players.length === 0
-    ? `<tr><td colspan="11" style="text-align:center;color:var(--text-muted);padding:40px">No players found</td></tr>`
+    ? `<tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:40px">No players found</td></tr>`
     : players.map((p, i) => {
       const team = p.teamId ? teams.find(t => t.id === p.teamId) : null;
       return `
@@ -162,6 +162,7 @@ function renderPlayers() {
           <td>${i + 1}</td>
           <td><strong>${p.name}</strong></td>
           <td><span class="badge ${categoryBadge(p.category)}">${p.category}</span></td>
+          <td>${escapeHtml(p.playingPosition || '—')}</td>
           <td><span class="tier-badge tier-${p.auctionTier.toLowerCase()}">Tier ${p.auctionTier}</span></td>
           <td>${formatPrice(p.basePrice, 'Rs')}</td>
           <td>${p.age}</td>
@@ -222,6 +223,7 @@ function renderQueue() {
         <div>
           <div class="qi-name">${p.name}</div>
           <span class="badge ${categoryBadge(p.category)} qi-cat">${p.category}</span>
+          ${p.playingPosition ? `<span class="tier-badge">${escapeHtml(p.playingPosition)}</span>` : ''}
           <span class="tier-badge tier-${p.auctionTier.toLowerCase()}">Tier ${p.auctionTier}</span>
         </div>
         <div style="text-align:right">
@@ -265,6 +267,7 @@ function showPlayerOnBlock(playerId) {
         <div class="obp-name">${p.name}</div>
         <div class="obp-meta">
           <span class="badge ${categoryBadge(p.category)}">${p.category}</span>
+          ${p.playingPosition ? `<span class="badge">${escapeHtml(p.playingPosition)}</span>` : ''}
           <span class="tier-badge tier-${p.auctionTier.toLowerCase()}">Tier ${p.auctionTier}</span>
           <span class="badge ${statusBadge(p.status)}">${p.status}</span>
         </div>
@@ -695,6 +698,7 @@ async function removeTeam(id) {
 // ---- PLAYER MODAL ----
 function openPlayerModal(editId) {
   const f = document.getElementById('player-form');
+  let selectedPosition = '';
   clearPlayerPhotoPreview();
   f.reset();
   document.getElementById('player-id').value = '';
@@ -713,6 +717,7 @@ function openPlayerModal(editId) {
       document.getElementById('p-age').value         = p.age;
       document.getElementById('p-nationality').value = p.nationality || '';
       document.getElementById('p-category').value    = p.category;
+      selectedPosition = p.playingPosition || '';
       document.getElementById('p-auction-tier').value = p.auctionTier;
       document.getElementById('p-base-unit').value   = 'Rs';
       document.getElementById('p-base').value        = Math.round(p.basePrice * 100000);
@@ -721,11 +726,29 @@ function openPlayerModal(editId) {
       if (p.photoUrl) showPlayerPhotoPreview(p.photoUrl);
     }
   }
+  updatePlayerPositionOptions(selectedPosition);
   document.getElementById('p-base').oninput = updatePlayerBasePreview;
   document.getElementById('p-base-unit').onchange = updatePlayerBasePreview;
   document.getElementById('p-photo').onchange = handlePlayerPhotoChange;
   updatePlayerBasePreview();
   document.getElementById('player-modal').classList.add('open');
+}
+
+function updatePlayerPositionOptions(selectedPosition = '') {
+  const category = document.getElementById('p-category').value;
+  const positionField = document.getElementById('p-position-field');
+  const positionSelect = document.getElementById('p-position');
+  const positions = category === 'Raider'
+    ? ['Right Side', 'Left Side']
+    : category === 'Defender'
+      ? ['Right Corner', 'Left Corner', 'Right Cover', 'Left Cover']
+      : [];
+
+  positionField.hidden = positions.length === 0;
+  positionSelect.required = positions.length > 0;
+  positionSelect.innerHTML = '<option value="">Select Playing Position</option>' +
+    positions.map((position) => `<option value="${position}">${position}</option>`).join('');
+  positionSelect.value = positions.includes(selectedPosition) ? selectedPosition : '';
 }
 
 function clearPlayerPhotoPreview() {
@@ -798,6 +821,7 @@ async function savePlayer(e) {
     age:         parseInt(document.getElementById('p-age').value),
     nationality: document.getElementById('p-nationality').value.trim(),
     category:    document.getElementById('p-category').value,
+    playingPosition: document.getElementById('p-position').value || null,
     auctionTier: document.getElementById('p-auction-tier').value,
     basePrice,
     prevTeam:    document.getElementById('p-prev-team').value.trim(),

@@ -119,6 +119,7 @@ function cleanPlayer(row) {
     age: row.age,
     nationality: row.nationality,
     category: row.category,
+    playingPosition: row.playing_position,
     auctionTier: row.auction_tier,
     basePrice: Number(row.base_price),
     photoUrl: row.photo_mime ? `/api/players/${encodeURIComponent(row.id)}/photo` : null,
@@ -137,7 +138,8 @@ async function getAuctionSnapshot() {
     SELECT a.player_id, a.last_result_player_id, a.last_result_status, a.last_result_at,
       p.*, result_player.id AS outcome_player_id, result_player.name AS outcome_player_name,
       result_player.age AS outcome_player_age, result_player.nationality AS outcome_player_nationality,
-      result_player.category AS outcome_player_category, result_player.auction_tier AS outcome_player_auction_tier,
+      result_player.category AS outcome_player_category, result_player.playing_position AS outcome_player_playing_position,
+      result_player.auction_tier AS outcome_player_auction_tier,
       result_player.base_price AS outcome_player_base_price, result_player.photo_mime AS outcome_player_photo_mime,
       result_player.current_bid AS outcome_player_current_bid, result_player.current_team_id AS outcome_player_current_team_id,
       result_player.prev_team AS outcome_player_prev_team, result_player.skills AS outcome_player_skills,
@@ -159,6 +161,7 @@ async function getAuctionSnapshot() {
         age: row.outcome_player_age,
         nationality: row.outcome_player_nationality,
         category: row.outcome_player_category,
+        playing_position: row.outcome_player_playing_position,
         auction_tier: row.outcome_player_auction_tier,
         base_price: row.outcome_player_base_price,
         photo_mime: row.outcome_player_photo_mime,
@@ -220,7 +223,7 @@ async function listTeams(client = pool) {
 
 async function listPlayers(client = pool) {
   const result = await client.query(`
-    SELECT id, name, age, nationality, category, auction_tier, base_price, photo_mime,
+    SELECT id, name, age, nationality, category, playing_position, auction_tier, base_price, photo_mime,
       current_bid, current_team_id, prev_team, skills, status, team_id, sold_price
     FROM players ORDER BY name
   `);
@@ -394,6 +397,7 @@ async function initDatabase() {
       age INTEGER NOT NULL CHECK (age BETWEEN 16 AND 45),
       nationality TEXT NOT NULL DEFAULT '',
       category TEXT NOT NULL CHECK (category IN ('Raider', 'Defender', 'All-Rounder')),
+      playing_position TEXT CHECK (playing_position IS NULL OR playing_position IN ('Right Side', 'Left Side', 'Right Corner', 'Left Corner', 'Right Cover', 'Left Cover')),
       auction_tier TEXT NOT NULL DEFAULT 'B' CHECK (auction_tier IN ('A', 'B', 'C')),
       base_price NUMERIC(15, 5) NOT NULL CHECK (base_price > 0),
       current_bid NUMERIC(15, 5),
@@ -412,6 +416,7 @@ async function initDatabase() {
   await pool.query('ALTER TABLE players ALTER COLUMN sold_price TYPE NUMERIC(15, 5)');
   await pool.query('ALTER TABLE players ADD COLUMN IF NOT EXISTS photo_mime TEXT');
   await pool.query('ALTER TABLE players ADD COLUMN IF NOT EXISTS photo_data TEXT');
+  await pool.query("ALTER TABLE players ADD COLUMN IF NOT EXISTS playing_position TEXT CHECK (playing_position IS NULL OR playing_position IN ('Right Side', 'Left Side', 'Right Corner', 'Left Corner', 'Right Cover', 'Left Cover'))");
   await pool.query('ALTER TABLE players ADD COLUMN IF NOT EXISTS current_bid NUMERIC(15, 5)');
   await pool.query('ALTER TABLE players ADD COLUMN IF NOT EXISTS current_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL');
   await pool.query("ALTER TABLE players ADD COLUMN IF NOT EXISTS auction_tier TEXT NOT NULL DEFAULT 'B' CHECK (auction_tier IN ('A', 'B', 'C'))");
@@ -715,7 +720,7 @@ app.delete('/api/teams/:id', requireRole('admin'), asyncRoute(async (req, res) =
 
 app.get('/api/players', requireRole(), asyncRoute(async (req, res) => {
   const result = await pool.query(`
-    SELECT id, name, age, nationality, category, auction_tier, base_price, photo_mime,
+    SELECT id, name, age, nationality, category, playing_position, auction_tier, base_price, photo_mime,
       current_bid, current_team_id, prev_team, skills, status, team_id, sold_price
     FROM players ORDER BY name
   `);
@@ -790,10 +795,16 @@ app.get('/api/players/:id/photo', requireRole(), asyncRoute(async (req, res) => 
 }));
 
 app.post('/api/players', requireRole('admin'), asyncRoute(async (req, res) => {
-  const { name, age, nationality = '', category, auctionTier, basePrice, prevTeam = '', skills = '', photoData } = req.body || {};
+  const { name, age, nationality = '', category, playingPosition = null, auctionTier, basePrice, prevTeam = '', skills = '', photoData } = req.body || {};
   const photo = parsePlayerPhoto(photoData);
   if (photo && photo.error) return res.status(400).json({ error: photo.error });
+  const validPositions = category === 'Raider'
+    ? ['Right Side', 'Left Side']
+    : category === 'Defender'
+      ? ['Right Corner', 'Left Corner', 'Right Cover', 'Left Cover']
+      : [];
   if (typeof name !== 'string' || !name.trim() || !['Raider', 'Defender', 'All-Rounder'].includes(category) ||
+      (playingPosition !== null && !validPositions.includes(playingPosition)) ||
       !['A', 'B', 'C'].includes(auctionTier) ||
       !Number.isInteger(Number(age)) || Number(age) < 16 || Number(age) > 45 ||
       !Number.isFinite(Number(basePrice)) || Number(basePrice) <= 0) {
@@ -801,29 +812,35 @@ app.post('/api/players', requireRole('admin'), asyncRoute(async (req, res) => {
   }
   const id = `P_${crypto.randomUUID()}`;
   await pool.query(
-    `INSERT INTO players (id, name, age, nationality, category, auction_tier, base_price, photo_mime, photo_data, prev_team, skills)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [id, name.trim(), Number(age), nationality.trim(), category, auctionTier, Number(basePrice), photo?.mime || null, photo?.data || null, prevTeam.trim(), skills.trim()]
+    `INSERT INTO players (id, name, age, nationality, category, playing_position, auction_tier, base_price, photo_mime, photo_data, prev_team, skills)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [id, name.trim(), Number(age), nationality.trim(), category, playingPosition, auctionTier, Number(basePrice), photo?.mime || null, photo?.data || null, prevTeam.trim(), skills.trim()]
   );
   res.status(201).json((await listPlayers()).find((player) => player.id === id));
 }));
 
 app.put('/api/players/:id', requireRole('admin'), asyncRoute(async (req, res) => {
-  const { name, age, nationality = '', category, auctionTier, basePrice, prevTeam = '', skills = '', photoData } = req.body || {};
+  const { name, age, nationality = '', category, playingPosition = null, auctionTier, basePrice, prevTeam = '', skills = '', photoData } = req.body || {};
   const photo = parsePlayerPhoto(photoData);
   if (photo && photo.error) return res.status(400).json({ error: photo.error });
+  const validPositions = category === 'Raider'
+    ? ['Right Side', 'Left Side']
+    : category === 'Defender'
+      ? ['Right Corner', 'Left Corner', 'Right Cover', 'Left Cover']
+      : [];
   if (typeof name !== 'string' || !name.trim() || !['Raider', 'Defender', 'All-Rounder'].includes(category) ||
+      (playingPosition !== null && !validPositions.includes(playingPosition)) ||
       !['A', 'B', 'C'].includes(auctionTier) ||
       !Number.isInteger(Number(age)) || Number(age) < 16 || Number(age) > 45 ||
       !Number.isFinite(Number(basePrice)) || Number(basePrice) <= 0) {
     return res.status(400).json({ error: 'Check the player name, age (16–45), playing role, auction tier (A, B, or C), and positive base price.' });
   }
   const result = await pool.query(
-    `UPDATE players SET name=$1, age=$2, nationality=$3, category=$4, auction_tier=$5, base_price=$6,
-      photo_mime=CASE WHEN $7::boolean THEN $8 ELSE photo_mime END,
-      photo_data=CASE WHEN $7::boolean THEN $9 ELSE photo_data END,
-      prev_team=$10, skills=$11 WHERE id=$12`,
-    [name.trim(), Number(age), nationality.trim(), category, auctionTier, Number(basePrice), Boolean(photo), photo?.mime || null, photo?.data || null, prevTeam.trim(), skills.trim(), req.params.id]
+    `UPDATE players SET name=$1, age=$2, nationality=$3, category=$4, playing_position=$5, auction_tier=$6, base_price=$7,
+      photo_mime=CASE WHEN $8::boolean THEN $9 ELSE photo_mime END,
+      photo_data=CASE WHEN $8::boolean THEN $10 ELSE photo_data END,
+      prev_team=$11, skills=$12 WHERE id=$13`,
+    [name.trim(), Number(age), nationality.trim(), category, playingPosition, auctionTier, Number(basePrice), Boolean(photo), photo?.mime || null, photo?.data || null, prevTeam.trim(), skills.trim(), req.params.id]
   );
   if (!result.rowCount) return res.status(404).json({ error: 'Player not found.' });
   res.json((await listPlayers()).find((player) => player.id === req.params.id));
