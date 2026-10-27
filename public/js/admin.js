@@ -542,14 +542,16 @@ function exportCSV() {
 }
 
 function exportPlayerPoolCSV() {
+  const selectedRole = document.getElementById('filter-category').value;
+  const players = getPlayers().filter((player) => !selectedRole || player.category === selectedRole);
   const teams = getTeams();
   const rows = [[
-    '#', 'Player ID', 'Player Name', 'Age', 'Playing Role', 'Auction Tier',
+    '#', 'Player ID', 'Player Name', 'Age', 'Playing Role', 'Playing Position', 'Auction Tier',
     'Nationality', 'Status', 'Team', 'Base Price (₹)', 'Sold Price (₹)',
     'Previous Team', 'Skills / Notes'
   ]];
 
-  getPlayers().forEach((player, index) => {
+  players.forEach((player, index) => {
     const team = player.teamId ? teams.find(item => item.id === player.teamId) : null;
     rows.push([
       index + 1,
@@ -557,6 +559,7 @@ function exportPlayerPoolCSV() {
       player.name,
       player.age,
       player.category,
+      player.playingPosition || '',
       player.auctionTier,
       player.nationality || '',
       player.status,
@@ -577,10 +580,12 @@ function exportPlayerPoolCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'KKPL_Player_Pool.csv';
+  link.download = selectedRole
+    ? `KKPL_${selectedRole.replace(/[^a-z0-9]+/gi, '_')}_Players.csv`
+    : 'KKPL_All_Players.csv';
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 0);
-  showToast('📥 Player pool CSV exported!');
+  showToast(`📥 ${selectedRole || 'All players'} CSV exported!`);
 }
 
 async function copyPlayerRegistrationLink() {
