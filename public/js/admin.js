@@ -538,6 +538,48 @@ function exportCSV() {
   showToast('📥 CSV Exported!');
 }
 
+function exportPlayerPoolCSV() {
+  const teams = getTeams();
+  const rows = [[
+    '#', 'Player ID', 'Player Name', 'Age', 'Playing Role', 'Auction Tier',
+    'Nationality', 'Status', 'Team', 'Base Price (₹)', 'Sold Price (₹)',
+    'Previous Team', 'Skills / Notes'
+  ]];
+
+  getPlayers().forEach((player, index) => {
+    const team = player.teamId ? teams.find(item => item.id === player.teamId) : null;
+    rows.push([
+      index + 1,
+      player.id,
+      player.name,
+      player.age,
+      player.category,
+      player.auctionTier,
+      player.nationality || '',
+      player.status,
+      team ? team.name : '',
+      Math.round(player.basePrice * 100000),
+      player.soldPrice === null ? '' : Number((player.soldPrice * 100000).toFixed(2)),
+      player.prevTeam || '',
+      player.skills || ''
+    ]);
+  });
+
+  const csv = rows.map(row => row.map(value => {
+    const cell = String(value ?? '');
+    const safeCell = /^[\s]*[=+\-@]/.test(cell) ? `'${cell}` : cell;
+    return `"${safeCell.replace(/"/g, '""')}"`;
+  }).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'KKPL_Player_Pool.csv';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  showToast('📥 Player pool CSV exported!');
+}
+
 async function copyPlayerRegistrationLink() {
   const link = new URL('/player-registration', window.location.origin).href;
   try {
@@ -707,7 +749,8 @@ function handlePlayerPhotoChange() {
     else document.getElementById('p-photo-preview').hidden = true;
     return;
   }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+      file.size === 0 || file.size > 5 * 1024 * 1024) {
     input.value = '';
     document.getElementById('p-photo-preview').hidden = true;
     showToast('❌ Choose a JPG, PNG, or WebP photo no larger than 5 MB.', true);

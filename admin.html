@@ -108,6 +108,7 @@
     <section class="section" id="section-players">
       <div class="section-top">
         <h2 class="section-heading">Player Pool</h2>
+        <button class="btn-export" onclick="exportPlayerPoolCSV()">⬇ Export Player Pool CSV</button>
         <button class="btn-primary" onclick="openPlayerModal()">+ Add Player</button>
       </div>
       <div class="filter-row">
@@ -406,7 +407,7 @@
           <div class="field full-width">
             <label for="p-photo">Player Photo</label>
             <input type="file" id="p-photo" accept="image/jpeg,image/png,image/webp"/>
-            <div class="photo-upload-hint">JPG, PNG, or WebP; maximum 2 MB. Leave empty to keep the existing photo.</div>
+            <div class="photo-upload-hint">JPG, PNG, or WebP; maximum 5 MB. Leave empty to keep the existing photo.</div>
             <img id="p-photo-preview" class="player-photo-preview" alt="Selected player photo preview" hidden/>
           </div>
           <div class="field">
