@@ -7,6 +7,7 @@ let currentAuctionPlayerId = null;
 let queueFilter = 'Available';
 let queueRoleFilter = '';
 let playerPhotoPreviewUrl = null;
+let refreshingAdminAuction = false;
 
 // ---- Navigation ----
 function showSection(name) {
@@ -20,6 +21,9 @@ function showSection(name) {
     matches: 'Match Schedule & Scorecards', stats: 'Player Stats & League Points'
   };
   document.getElementById('page-title').textContent = titles[name] || name;
+  if (window.location.hash !== `#${name}`) {
+    history.replaceState(null, '', `#${name}`);
+  }
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) {
       n.classList.add('active');
@@ -1344,6 +1348,25 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   });
 });
 
+window.addEventListener('hashchange', () => {
+  const section = window.location.hash.slice(1);
+  if (document.getElementById(`section-${section}`)) showSection(section);
+});
+
+setInterval(async () => {
+  if (document.visibilityState !== 'visible' || refreshingAdminAuction) return;
+  refreshingAdminAuction = true;
+  try {
+    await refreshData();
+    currentAuctionPlayerId = getCurrentAuction()?.id || null;
+    if (document.getElementById('section-auction').classList.contains('active')) renderAuction();
+  } catch (error) {
+    showRequestError(error);
+  } finally {
+    refreshingAdminAuction = false;
+  }
+}, 1000);
+
 (async function initializeAdmin() {
   try {
     const user = await initData();
@@ -1354,7 +1377,8 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
     await refreshData();
     currentAuctionPlayerId = getCurrentAuction() ? getCurrentAuction().id : null;
     renderRegistrationControl();
-    showSection('dashboard');
+    const initialSection = window.location.hash.slice(1);
+    showSection(document.getElementById(`section-${initialSection}`) ? initialSection : 'dashboard');
   } catch (error) {
     showRequestError(error);
   }
