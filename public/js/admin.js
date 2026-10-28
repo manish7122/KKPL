@@ -280,17 +280,45 @@ async function setAuctionPlayer(playerId) {
 }
 
 function showPlayerOnBlock(playerId) {
+  const display = document.getElementById('auction-player-display');
   const p = getPlayerById(playerId);
   if (!p) {
     currentAuctionPlayerId = null;
-    document.getElementById('auction-player-display').innerHTML = '<div class="no-player-msg">Select a player to start auction</div>';
+    display.removeAttribute('data-player-id');
+    display.innerHTML = '<div class="no-player-msg">Select a player to start auction</div>';
     document.getElementById('bid-controls').style.display = 'none';
     return;
   }
   const leadingTeam = p.currentTeamId ? getTeamById(p.currentTeamId) : null;
   const team = p.teamId ? getTeamById(p.teamId) : null;
 
-  document.getElementById('auction-player-display').innerHTML = `
+  const updateBidControls = () => {
+    document.getElementById('bid-controls').style.display = 'flex';
+    const displayedBid = p.currentBid === null ? p.soldPrice || p.basePrice : p.currentBid;
+    document.getElementById('current-bid-val').textContent = formatPrice(displayedBid, 'Rs');
+    const bidIncrement = getBidIncrementRupees(displayedBid);
+    document.getElementById('bid-increment-value').textContent = `₹${bidIncrement.toLocaleString('en-IN')}`;
+    document.getElementById('leading-team').textContent = p.status === 'Sold' && team
+      ? `Sold to ${team.name}`
+      : leadingTeam
+        ? `Leading bid: ${leadingTeam.name}`
+        : 'No team has bid yet';
+    document.querySelector('#bid-controls .btn-bid').disabled = p.status !== 'Available' || !p.currentTeamId;
+    document.getElementById('undo-bid-button').disabled = p.status !== 'Available' || !p.currentTeamId;
+    document.getElementById('restart-bid-button').disabled = p.status !== 'Available' || !p.currentTeamId;
+    renderBidTeamButtons(p);
+  };
+
+  if (display.dataset.playerId === p.id && display.querySelector('.obp-profile')) {
+    document.getElementById('obp-status').textContent = p.status;
+    document.getElementById('obp-status').className = `badge ${statusBadge(p.status)}`;
+    document.getElementById('obp-current-team').textContent = team ? team.name : '—';
+    updateBidControls();
+    return;
+  }
+
+  display.dataset.playerId = p.id;
+  display.innerHTML = `
     <div class="obp-profile">
       ${p.photoUrl
         ? `<img class="obp-photo" src="${p.photoUrl}" alt="${p.name}"/>`
@@ -301,52 +329,21 @@ function showPlayerOnBlock(playerId) {
           <span class="badge ${categoryBadge(p.category)}">${p.category}</span>
           ${p.playingPosition ? `<span class="badge">${escapeHtml(p.playingPosition)}</span>` : ''}
           <span class="tier-badge tier-${p.auctionTier.toLowerCase()}">Tier ${p.auctionTier}</span>
-          <span class="badge ${statusBadge(p.status)}">${p.status}</span>
+          <span id="obp-status" class="badge ${statusBadge(p.status)}">${p.status}</span>
         </div>
       </div>
     </div>
     <div class="obp-detail-row">
-      <div class="obp-detail">
-        <span class="obp-detail-key">Age</span>
-        <span class="obp-detail-val">${p.age} yrs</span>
-      </div>
-      <div class="obp-detail">
-        <span class="obp-detail-key">Nationality</span>
-        <span class="obp-detail-val">${p.nationality || '—'}</span>
-      </div>
-      <div class="obp-detail">
-        <span class="obp-detail-key">Prev Team</span>
-        <span class="obp-detail-val">${p.prevTeam || '—'}</span>
-      </div>
-      <div class="obp-detail">
-        <span class="obp-detail-key">Skills</span>
-        <span class="obp-detail-val" style="font-size:0.85rem">${p.skills || '—'}</span>
-      </div>
-      <div class="obp-detail">
-        <span class="obp-detail-key">Base Price</span>
-        <span class="obp-detail-val obp-base-price">${formatPrice(p.basePrice, 'Rs')}</span>
-      </div>
-      <div class="obp-detail">
-        <span class="obp-detail-key">Current Team</span>
-        <span class="obp-detail-val">${team ? team.name : '—'}</span>
-      </div>
+      <div class="obp-detail"><span class="obp-detail-key">Age</span><span class="obp-detail-val">${p.age} yrs</span></div>
+      <div class="obp-detail"><span class="obp-detail-key">Nationality</span><span class="obp-detail-val">${p.nationality || '—'}</span></div>
+      <div class="obp-detail"><span class="obp-detail-key">Prev Team</span><span class="obp-detail-val">${p.prevTeam || '—'}</span></div>
+      <div class="obp-detail"><span class="obp-detail-key">Skills</span><span class="obp-detail-val" style="font-size:0.85rem">${p.skills || '—'}</span></div>
+      <div class="obp-detail"><span class="obp-detail-key">Base Price</span><span class="obp-detail-val obp-base-price">${formatPrice(p.basePrice, 'Rs')}</span></div>
+      <div class="obp-detail"><span class="obp-detail-key">Current Team</span><span id="obp-current-team" class="obp-detail-val">${team ? team.name : '—'}</span></div>
     </div>
   `;
 
-  document.getElementById('bid-controls').style.display = 'flex';
-  const displayedBid = p.currentBid === null ? p.soldPrice || p.basePrice : p.currentBid;
-  document.getElementById('current-bid-val').textContent = formatPrice(displayedBid, 'Rs');
-  const bidIncrement = getBidIncrementRupees(displayedBid);
-  document.getElementById('bid-increment-value').textContent = `₹${bidIncrement.toLocaleString('en-IN')}`;
-  document.getElementById('leading-team').textContent = p.status === 'Sold' && team
-    ? `Sold to ${team.name}`
-    : leadingTeam
-      ? `Leading bid: ${leadingTeam.name}`
-      : 'No team has bid yet';
-  document.querySelector('#bid-controls .btn-bid').disabled = p.status !== 'Available' || !p.currentTeamId;
-  document.getElementById('undo-bid-button').disabled = p.status !== 'Available' || !p.currentTeamId;
-  document.getElementById('restart-bid-button').disabled = p.status !== 'Available' || !p.currentTeamId;
-  renderBidTeamButtons(p);
+  updateBidControls();
 }
 
 function getBidIncrementRupees(currentBidLakhs) {

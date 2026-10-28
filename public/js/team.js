@@ -198,11 +198,15 @@ function renderAuctionStatus() {
   const sold = players.filter(p => p.status === 'Sold');
   const available = players.filter(p => p.status === 'Available');
   const unsold = players.filter(p => p.status === 'Unsold');
+  const auction = getCurrentAuction();
+  const existingPhoto = auction && grid.dataset.auctionPlayerId === auction.id
+    ? grid.querySelector('.live-auction-photo')
+    : null;
 
   // Summary cards
   let html = `
-    ${getCurrentAuction() ? (() => {
-      const player = getCurrentAuction();
+    ${auction ? (() => {
+      const player = auction;
       const leadingTeam = player.currentTeamId ? teams.find(team => team.id === player.currentTeamId) : null;
       const amount = player.currentBid === null ? player.basePrice : player.currentBid;
       return `
@@ -280,6 +284,14 @@ function renderAuctionStatus() {
   });
 
   grid.innerHTML = html;
+  if (auction) {
+    grid.dataset.auctionPlayerId = auction.id;
+    if (existingPhoto && existingPhoto.getAttribute('src') === auction.photoUrl) {
+      grid.querySelector('.live-auction-photo')?.replaceWith(existingPhoto);
+    }
+  } else {
+    grid.removeAttribute('data-auction-player-id');
+  }
 }
 
 // ---- ALL RESULTS ----
