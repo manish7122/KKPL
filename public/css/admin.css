@@ -3,6 +3,35 @@
    ============================================ */
 
 /* ======= AUCTION CONSOLE ======= */
+.registration-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.registration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #22c55e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.registration-status.is-closed {
+  color: #ef4444;
+}
+
+.registration-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+}
+
 .auction-registration-actions {
   display: flex;
   flex-wrap: wrap;
@@ -483,7 +512,21 @@
   border: 1px solid rgba(255,255,255,0.2);
 }
 
+#section-players .section-top {
+  column-gap: 12px;
+}
+
 @media (max-width: 1100px) {
+  #section-players .section-top {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #section-players .section-heading {
+    width: 100%;
+  }
+  #section-players .registration-control {
+    margin-left: 0;
+  }
   .obp-profile { align-items: flex-start; gap: 14px; }
   .obp-photo, .obp-photo-placeholder { width: 96px; height: 120px; }
   .obp-name { font-size: 2.2rem; }

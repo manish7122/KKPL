@@ -1,12 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './registration.css';
 
 export default function PlayerRegistrationPage() {
+  const [registrationOpen, setRegistrationOpen] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/player-registration/status')
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not check registration status.');
+        if (active) setRegistrationOpen(result.open);
+      })
+      .catch((statusError) => {
+        if (active) setMessage(statusError.message || 'Could not check registration status.');
+      });
+    return () => { active = false; };
+  }, []);
 
   async function submitRegistration(event) {
     event.preventDefault();
@@ -62,6 +77,14 @@ export default function PlayerRegistrationPage() {
           Submit your player details to be added to the KKPL auction player list.
           Your auction tier and base price will be set by default and can be updated by the admin.
         </p>
+        {registrationOpen === false ? (
+          <div className="player-registration-closed" role="status">
+            <strong>Registration is currently closed.</strong>
+            <span>Please check again later.</span>
+          </div>
+        ) : registrationOpen === null ? (
+          <p className="player-registration-loading" role="status">Checking registration status...</p>
+        ) : (
         <form className="player-registration-form" onSubmit={submitRegistration}>
           <label>
             Player name *
@@ -109,6 +132,7 @@ export default function PlayerRegistrationPage() {
             {message}
           </p>
         </form>
+        )}
         <p className="player-registration-footnote">Fields marked * are required. Admin can update your details and auction information.</p>
       </section>
     </main>

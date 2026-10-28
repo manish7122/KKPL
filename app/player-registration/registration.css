@@ -46,6 +46,32 @@
   line-height: 1.6;
 }
 
+ .player-registration-closed,
+.player-registration-loading {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #fda4af;
+  line-height: 1.6;
+}
+
+.player-registration-closed {
+  display: grid;
+  gap: 3px;
+}
+
+.player-registration-closed span {
+  color: #d7d7e5;
+}
+
+.player-registration-loading {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #a0a0c0;
+}
+
 .player-registration-form {
   display: grid;
   gap: 16px;

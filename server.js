@@ -434,6 +434,13 @@ async function initDatabase() {
   await pool.query('ALTER TABLE auction_state ADD COLUMN IF NOT EXISTS last_result_at TIMESTAMPTZ');
   await pool.query('INSERT INTO auction_state (id, player_id) VALUES (1, NULL) ON CONFLICT (id) DO NOTHING');
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+  await pool.query("INSERT INTO app_settings (key, value) VALUES ('registration_open', 'true') ON CONFLICT (key) DO NOTHING");
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS auction_bid_history (
       id BIGSERIAL PRIMARY KEY,
       player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -633,6 +640,22 @@ app.post('/api/auth/login', asyncRoute(async (req, res) => {
 app.get('/api/auth/session', (req, res) => {
   res.json({ user: req.session.user || null });
 });
+
+app.get('/api/player-registration/status', asyncRoute(async (req, res) => {
+  const result = await pool.query("SELECT value FROM app_settings WHERE key = 'registration_open'");
+  res.json({ open: result.rowCount > 0 && result.rows[0].value === 'true' });
+}));
+
+app.put('/api/player-registration/status', requireRole('admin'), asyncRoute(async (req, res) => {
+  if (typeof req.body?.open !== 'boolean') {
+    return res.status(400).json({ error: 'Registration status must be true or false.' });
+  }
+  await pool.query(
+    "UPDATE app_settings SET value=$1 WHERE key='registration_open'",
+    [req.body.open ? 'true' : 'false']
+  );
+  res.json({ open: req.body.open });
+}));
 
 app.post('/api/auth/logout', (req, res, next) => {
   req.session.destroy((error) => {
@@ -853,6 +876,10 @@ app.delete('/api/players/:id', requireRole('admin'), asyncRoute(async (req, res)
 }));
 
 app.post('/api/player-registration', asyncRoute(async (req, res) => {
+  const statusResult = await pool.query("SELECT value FROM app_settings WHERE key = 'registration_open'");
+  if (!statusResult.rowCount || statusResult.rows[0].value !== 'true') {
+    return res.status(403).json({ error: 'Player registration is currently closed.' });
+  }
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   const attempt = playerRegistrationAttempts.get(ip);

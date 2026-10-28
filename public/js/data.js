@@ -8,6 +8,7 @@ let sessionCache = null;
 let currentAuctionCache = null;
 let lastAuctionOutcomeCache = null;
 let matchesCache = [];
+let registrationOpenCache = true;
 
 async function apiRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -34,17 +35,19 @@ async function initData() {
 async function refreshData() {
   if (!sessionCache) return;
   if (sessionCache.type === 'admin') {
-    const [teams, players, auctionSnapshot, matches] = await Promise.all([
+    const [teams, players, auctionSnapshot, matches, registrationStatus] = await Promise.all([
       apiRequest('/api/teams'),
       apiRequest('/api/players'),
       apiRequest('/api/auction/state'),
-      apiRequest('/api/matches')
+      apiRequest('/api/matches'),
+      apiRequest('/api/player-registration/status')
     ]);
     teamsCache = teams;
     playersCache = players;
     currentAuctionCache = auctionSnapshot.currentAuction;
     lastAuctionOutcomeCache = auctionSnapshot.lastOutcome;
     matchesCache = matches;
+    registrationOpenCache = registrationStatus.open;
     return;
   }
   if (sessionCache.type === 'team') {
@@ -64,6 +67,7 @@ function getPlayerById(id) { return playersCache.find((player) => player.id === 
 function getCurrentAuction() { return currentAuctionCache; }
 function getLastAuctionOutcome() { return lastAuctionOutcomeCache; }
 function getMatches() { return matchesCache; }
+function getRegistrationOpen() { return registrationOpenCache; }
 function getSession() { return sessionCache; }
 function setSession(user) { sessionCache = user; }
 
@@ -235,6 +239,7 @@ function clearSession() {
   currentAuctionCache = null;
   lastAuctionOutcomeCache = null;
   matchesCache = [];
+  registrationOpenCache = true;
 }
 
 async function createTeam(team) {
@@ -264,6 +269,14 @@ async function updatePlayer(id, player) {
 
 async function deletePlayer(id) {
   await apiRequest(`/api/players/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await refreshData();
+}
+
+async function setPlayerRegistrationOpen(open) {
+  await apiRequest('/api/player-registration/status', {
+    method: 'PUT',
+    body: JSON.stringify({ open })
+  });
   await refreshData();
 }
 

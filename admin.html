@@ -14,7 +14,7 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">🏉</div>
+      <img class="logo-icon" src="/kabbadi logo.webp" alt="" width="48" height="48" />
       <div>
         <div class="logo-title">KKPL</div>
         <div class="logo-sub">Admin Panel</div>
@@ -108,6 +108,12 @@
     <section class="section" id="section-players">
       <div class="section-top">
         <h2 class="section-heading">Player Pool</h2>
+        <div class="registration-control">
+          <span id="registration-status" class="registration-status"><span class="registration-status-dot"></span> Registration Open</span>
+          <button id="registration-toggle" class="btn-secondary" type="button" onclick="togglePlayerRegistration()">Close Registration</button>
+          <a class="btn-export" href="/player-registration" target="_blank" rel="noopener">Open Registration Form</a>
+          <button class="btn-export" type="button" onclick="copyPlayerRegistrationLink()">Copy Registration Link</button>
+        </div>
         <button class="btn-export" onclick="exportPlayerPoolCSV()">⬇ Export Player Pool CSV</button>
         <button class="btn-primary" onclick="openPlayerModal()">+ Add Player</button>
       </div>
@@ -211,10 +217,6 @@
     <section class="section" id="section-results">
       <div class="section-top">
         <h2 class="section-heading">📋 Auction Results</h2>
-        <div class="auction-registration-actions">
-          <a class="btn-export" href="/player-registration" target="_blank" rel="noopener">Open Registration Form</a>
-          <button class="btn-export" type="button" onclick="copyPlayerRegistrationLink()">Copy Registration Link</button>
-        </div>
       </div>
       <div id="auction-highlights" class="auction-highlights"></div>
       <div class="results-filter">

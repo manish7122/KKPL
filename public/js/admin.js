@@ -136,6 +136,31 @@ function renderTeams() {
 }
 
 // ---- PLAYERS ----
+function renderRegistrationControl() {
+  const open = getRegistrationOpen();
+  const status = document.getElementById('registration-status');
+  const toggle = document.getElementById('registration-toggle');
+  status.innerHTML = `<span class="registration-status-dot"></span> Registration ${open ? 'Open' : 'Closed'}`;
+  status.classList.toggle('is-closed', !open);
+  toggle.textContent = open ? 'Close Registration' : 'Reopen Registration';
+  toggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+}
+
+async function togglePlayerRegistration() {
+  const toggle = document.getElementById('registration-toggle');
+  const open = getRegistrationOpen();
+  toggle.disabled = true;
+  try {
+    await setPlayerRegistrationOpen(!open);
+    renderRegistrationControl();
+    showToast(`✅ Player registration ${open ? 'closed' : 'reopened'}.`);
+  } catch (error) {
+    showRequestError(error);
+  } finally {
+    toggle.disabled = false;
+  }
+}
+
 function renderPlayers() {
   const catFilter    = document.getElementById('filter-category').value;
   const statusFilter = document.getElementById('filter-status').value;
@@ -1328,6 +1353,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
     }
     await refreshData();
     currentAuctionPlayerId = getCurrentAuction() ? getCurrentAuction().id : null;
+    renderRegistrationControl();
     showSection('dashboard');
   } catch (error) {
     showRequestError(error);

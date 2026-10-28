@@ -107,7 +107,11 @@ body {
 }
 
 .logo-icon {
-  font-size: 2.4rem;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  object-fit: cover;
+  border-radius: 8px;
   filter: drop-shadow(0 0 12px rgba(255,107,0,0.6));
   animation: pulse-glow 3s ease-in-out infinite;
 }
