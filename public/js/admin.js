@@ -8,6 +8,7 @@ let queueFilter = 'Available';
 let queueRoleFilter = '';
 let playerPhotoPreviewUrl = null;
 let refreshingAdminAuction = false;
+let lastSeenAuctionOutcomeAt = null;
 const activeAdminSectionKey = 'kkpl.admin.activeSection';
 
 // ---- Navigation ----
@@ -420,7 +421,9 @@ async function finalizeAuction() {
     showRequestError(error);
     return;
   }
-  showAuctionOutcome(getLastAuctionOutcome());
+  const outcome = getLastAuctionOutcome();
+  lastSeenAuctionOutcomeAt = outcome?.occurredAt || lastSeenAuctionOutcomeAt;
+  showAuctionOutcome(outcome);
   showToast(`✅ ${player.name} SOLD to ${winningTeam ? winningTeam.name : 'leading team'} for ${formatPrice(player.currentBid, 'Rs')}`);
   renderQueue();
   showPlayerOnBlock(currentAuctionPlayerId);
@@ -487,7 +490,9 @@ async function markUnsold() {
     return;
   }
 
-  showAuctionOutcome(getLastAuctionOutcome());
+  const outcome = getLastAuctionOutcome();
+  lastSeenAuctionOutcomeAt = outcome?.occurredAt || lastSeenAuctionOutcomeAt;
+  showAuctionOutcome(outcome);
   showToast(`❌ ${player.name} marked UNSOLD`);
   renderQueue();
   showPlayerOnBlock(currentAuctionPlayerId);
@@ -1359,8 +1364,19 @@ setInterval(async () => {
   if (document.visibilityState !== 'visible' || refreshingAdminAuction) return;
   refreshingAdminAuction = true;
   try {
+    const previousAuctionPlayerId = currentAuctionPlayerId;
     await refreshData();
-    currentAuctionPlayerId = getCurrentAuction()?.id || null;
+    const nextAuctionPlayerId = getCurrentAuction()?.id || null;
+    const outcome = getLastAuctionOutcome();
+    if (outcome?.occurredAt && outcome.occurredAt !== lastSeenAuctionOutcomeAt) {
+      lastSeenAuctionOutcomeAt = outcome.occurredAt;
+      showAuctionOutcome(outcome);
+    }
+    currentAuctionPlayerId = nextAuctionPlayerId;
+    if (previousAuctionPlayerId && !nextAuctionPlayerId) {
+      renderQueue();
+      showPlayerOnBlock(null);
+    }
     if (document.getElementById('section-auction').classList.contains('active')) renderAuction();
   } catch (error) {
     showRequestError(error);
@@ -1378,6 +1394,7 @@ setInterval(async () => {
     }
     await refreshData();
     currentAuctionPlayerId = getCurrentAuction() ? getCurrentAuction().id : null;
+    lastSeenAuctionOutcomeAt = getLastAuctionOutcome()?.occurredAt || null;
     renderRegistrationControl();
     const hashSection = window.location.hash.slice(1);
     const savedSection = sessionStorage.getItem(activeAdminSectionKey);
