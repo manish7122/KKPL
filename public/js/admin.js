@@ -8,6 +8,7 @@ let queueFilter = 'Available';
 let queueRoleFilter = '';
 let playerPhotoPreviewUrl = null;
 let refreshingAdminAuction = false;
+const activeAdminSectionKey = 'kkpl.admin.activeSection';
 
 // ---- Navigation ----
 function showSection(name) {
@@ -24,6 +25,7 @@ function showSection(name) {
   if (window.location.hash !== `#${name}`) {
     history.replaceState(null, '', `#${name}`);
   }
+  sessionStorage.setItem(activeAdminSectionKey, name);
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + name + "'")) {
       n.classList.add('active');
@@ -1377,8 +1379,14 @@ setInterval(async () => {
     await refreshData();
     currentAuctionPlayerId = getCurrentAuction() ? getCurrentAuction().id : null;
     renderRegistrationControl();
-    const initialSection = window.location.hash.slice(1);
-    showSection(document.getElementById(`section-${initialSection}`) ? initialSection : 'dashboard');
+    const hashSection = window.location.hash.slice(1);
+    const savedSection = sessionStorage.getItem(activeAdminSectionKey);
+    const initialSection = document.getElementById(`section-${hashSection}`)
+      ? hashSection
+      : document.getElementById(`section-${savedSection}`)
+        ? savedSection
+        : 'dashboard';
+    showSection(initialSection);
   } catch (error) {
     showRequestError(error);
   }
