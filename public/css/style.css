@@ -116,6 +116,36 @@ body {
   animation: pulse-glow 3s ease-in-out infinite;
 }
 
+.hero-slogan {
+  display: inline-flex;
+  flex-direction: column;
+  margin-top: 32px;
+  font-family: 'Bebas Neue', 'Rajdhani', sans-serif;
+  font-size: clamp(2.6rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 0.88;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 8px 30px rgba(255, 107, 0, 0.22);
+}
+
+.hero-slogan span {
+  color: #fff;
+}
+
+.hero-slogan strong {
+  width: fit-content;
+  margin-top: 8px;
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 1.12em;
+  letter-spacing: 5px;
+  -webkit-text-stroke: 1px rgba(255, 140, 51, 0.75);
+  text-shadow:
+    3px 3px 0 rgba(124, 58, 237, 0.85),
+    0 0 28px rgba(255, 107, 0, 0.38);
+}
+
 @keyframes pulse-glow {
   0%,100% { filter: drop-shadow(0 0 12px rgba(255,107,0,0.6)); }
   50% { filter: drop-shadow(0 0 24px rgba(255,107,0,0.9)); }
@@ -157,11 +187,11 @@ body {
   line-height: 0.95;
   letter-spacing: 4px;
   color: #fff;
+  margin-bottom: 0;
   text-shadow: 0 0 60px rgba(255,107,0,0.3);
 }
 
 .hero-heading .accent {
-  display: block;
   background: linear-gradient(135deg, var(--orange), var(--purple-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
