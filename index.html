@@ -22,16 +22,57 @@
   <!-- Header -->
   <header class="login-header">
     <div class="logo-wrap">
-      <img class="logo-icon" src="/kabbadi logo.webp" alt="" width="48" height="48" />
+      <img class="logo-icon" src="/kabbadi logo.webp" alt="KKPL Logo" width="48" height="48" />
       <div>
         <div class="logo-title">KKPL</div>
-        <div class="logo-sub">Kabaddi Auction League</div>
+        <div class="logo-sub">Kabaddi Auction & Match League</div>
       </div>
     </div>
+    <nav class="portal-nav" aria-label="Main Navigation">
+      <button type="button" class="nav-tab-btn active" id="btn-view-matches" onclick="switchMainView('matches')">
+        <span class="pulse-dot"></span> Live Match Center
+      </button>
+      <button type="button" class="nav-tab-btn" id="btn-view-login" onclick="switchMainView('login')">
+        🔐 Portal Login
+      </button>
+    </nav>
   </header>
 
-  <!-- Login Card -->
-  <main class="login-main">
+
+  <!-- VIEW 1: PUBLIC MATCH CENTER (Open to all visitors without login) -->
+  <section id="view-matches" class="public-match-center">
+    <div class="public-match-hero">
+      <div class="hero-badge"><span class="pulse-dot"></span> REAL-TIME MATCH SCORECARD</div>
+      <h1 class="public-match-title">KKPL <span class="accent">MATCH CENTER</span></h1>
+      <p class="public-match-sub">Live scores, scheduled fixtures, and completed results &bull; Pure team scores</p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="match-filter-bar glass">
+      <div class="filter-pills">
+        <button class="pill-btn active" onclick="filterPublicMatches('all', this)">All Matches (<span id="count-all">0</span>)</button>
+        <button class="pill-btn" onclick="filterPublicMatches('live', this)">🔴 Live Now (<span id="count-live">0</span>)</button>
+        <button class="pill-btn" onclick="filterPublicMatches('scheduled', this)">⏳ Upcoming (<span id="count-scheduled">0</span>)</button>
+        <button class="pill-btn" onclick="filterPublicMatches('completed', this)">🏆 Completed (<span id="count-completed">0</span>)</button>
+      </div>
+      <div class="match-bar-actions">
+        <span class="live-status-indicator"><span class="pulse-dot-green"></span> Auto-updating (3s)</span>
+        <button class="btn-refresh" onclick="fetchAndRenderPublicMatches(true)" title="Refresh scores">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <!-- Match Cards Grid -->
+    <div id="public-matches-list" class="public-matches-grid">
+      <div class="public-empty-box">
+        <div class="public-empty-icon">⏳</div>
+        <div class="public-empty-title">Loading Match Scorecards...</div>
+        <div class="public-empty-sub">Fetching latest scores from KKPL server</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 2: PORTAL LOGIN (Admin & Team Logins) -->
+  <main id="view-login" class="login-main" style="display: none;">
     <div class="login-hero">
       <h1 class="hero-heading">OFFICIAL <span class="accent">AUCTION</span><br/>PORTAL</h1>
       <p class="hero-slogan" aria-label="Apni mitti, apna khel">
@@ -39,6 +80,11 @@
         <strong>apna khel</strong>
       </p>
       <p class="hero-sub">The ultimate platform to manage bids, rosters, and team squads – PKL style.</p>
+      <div style="margin-top: 20px;">
+        <button type="button" onclick="switchMainView('matches')" class="nav-tab-btn" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2);">
+          &larr; View Live Match Center (No Login Required)
+        </button>
+      </div>
     </div>
 
     <div class="login-card glass">

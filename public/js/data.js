@@ -11,13 +11,15 @@ let matchesCache = [];
 let registrationOpenCache = true;
 
 async function apiRequest(url, options = {}) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('kkpl_token') : null;
   const response = await fetch(url, {
     ...options,
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers
     },
-    credentials: 'same-origin'
+    credentials: 'include'
   });
 
   if (response.status === 204) return null;
@@ -233,6 +235,9 @@ function renderSeasonStats(containerId, ranking = document.getElementById(`${con
 }
 
 function clearSession() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('kkpl_token');
+  }
   sessionCache = null;
   teamsCache = [];
   playersCache = [];
@@ -374,6 +379,14 @@ async function updateGoldenRaidToss(id, toss) {
   await apiRequest(`/api/matches/${encodeURIComponent(id)}/golden-toss`, {
     method: 'PUT',
     body: JSON.stringify(toss)
+  });
+  await refreshData();
+}
+
+async function updateMatchScore(id, homeScore, awayScore) {
+  await apiRequest(`/api/matches/${encodeURIComponent(id)}/score`, {
+    method: 'PUT',
+    body: JSON.stringify({ homeScore, awayScore })
   });
   await refreshData();
 }

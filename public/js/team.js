@@ -343,33 +343,6 @@ function renderTeamMatches() {
           ${groupedMatches.map((match) => {
             const home = match.homeTeam;
             const away = match.awayTeam;
-            const playerRows = (team) => {
-              const scored = new Map(match.playerPoints.map((entry) => [entry.playerId, entry]));
-              const players = getPlayers().filter((player) => player.teamId === team.id);
-              if (!players.length) return '<p class="match-no-players">No players assigned to this team yet.</p>';
-              return `
-                <div class="match-stats-scroll"><table class="match-stats-table">
-                  <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Bonus</th><th>Other</th><th>Total</th></tr></thead>
-                  <tbody>${players.map((player) => {
-                    const points = scored.get(player.id);
-                    return `<tr><th scope="row">${escapeHtml(player.name)}</th>
-                      <td>${points?.raidPoints || 0}</td><td>${points?.tacklePoints || 0}</td>
-                      <td>${points?.bonusPoints || 0}</td><td>${points?.otherPoints || 0}</td>
-                      <td><strong>${points?.total || 0}</strong></td></tr>`;
-                  }).join('')}</tbody>
-                </table></div>
-              `;
-            };
-            const extras = (team) => team.id === home.id ? match.extras.home : match.extras.away;
-            const teamPanel = (team) => `
-              <section class="match-points-team">
-                <h4>${escapeHtml(team.name)} — Player Points</h4>
-                ${playerRows(team)}
-                <p class="match-extras-line">Extras: All-outs <strong>${extras(team).allOut}</strong>
-                  · Technical <strong>${extras(team).technical}</strong>
-                  · Total <strong>${extras(team).total}</strong></p>
-              </section>
-            `;
             const hasScore = status === 'live' || status === 'completed';
             return `
               <article class="match-card match-team-card">
@@ -385,50 +358,20 @@ function renderTeamMatches() {
                   <p class="match-toss-summary">Toss: <strong>${escapeHtml(match.toss.winnerTeamName)}</strong> won and
                     ${match.toss.decision === 'raid' ? 'elected to raid' : 'elected to choose court side'}.</p>
                 ` : ''}
-                ${match.tieBreak?.phase ? `
-                  <p class="match-tiebreak-summary">
-                    Super 5: <strong>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</strong>
-                    ${match.tieBreak.toss ? ` · Golden toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${escapeHtml(match.tieBreak.toss.decision)}.` : ''}
-                  </p>
-                ` : ''}
                 ${status === 'completed' ? `
                   <p class="match-outcome">${escapeHtml(getMatchOutcome(match))}</p>
                 ` : ''}
-                ${status === 'completed' ? `
-                  <button class="match-scoreboard match-score-toggle" type="button"
-                    aria-expanded="false" aria-controls="team-match-details-${escapeHtml(match.id)}"
-                    aria-label="Show player points for ${escapeHtml(home.name)} versus ${escapeHtml(away.name)}"
-                    onclick="toggleTeamMatchDetails(event,'team-match-details-${escapeHtml(match.id)}')">
-                    <span class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
-                      <span class="match-team-name">${escapeHtml(home.name)}</span>
-                      <span class="match-score-value">${match.homeScore}</span>
-                    </span>
-                    <span class="match-score-separator">–</span>
-                    <span class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
-                      <span class="match-team-name">${escapeHtml(away.name)}</span>
-                      <span class="match-score-value">${match.awayScore}</span>
-                    </span>
-                  </button>
-                  <p class="match-score-hint">Click the score to view player points</p>
-                  <div id="team-match-details-${escapeHtml(match.id)}" class="match-player-points match-readonly-points" hidden>
-                    ${teamPanel(home)}${teamPanel(away)}
+                <div class="match-scoreboard">
+                  <div class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
+                    <div class="match-team-name">${escapeHtml(home.name)}</div>
+                    <div class="match-score-value">${hasScore ? match.homeScore : '—'}</div>
                   </div>
-                ` : `
-                  <div class="match-scoreboard">
-                    <div class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
-                      <div class="match-team-name">${escapeHtml(home.name)}</div>
-                      <div class="match-score-value">${hasScore ? match.homeScore : '—'}</div>
-                    </div>
-                    <span class="match-score-separator">–</span>
-                    <div class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
-                      <div class="match-team-name">${escapeHtml(away.name)}</div>
-                      <div class="match-score-value">${hasScore ? match.awayScore : '—'}</div>
-                    </div>
+                  <span class="match-score-separator">–</span>
+                  <div class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
+                    <div class="match-team-name">${escapeHtml(away.name)}</div>
+                    <div class="match-score-value">${hasScore ? match.awayScore : '—'}</div>
                   </div>
-                  ${status === 'live' ? `
-                    <div class="match-player-points match-readonly-points">${teamPanel(home)}${teamPanel(away)}</div>
-                  ` : ''}
-                `}
+                </div>
               </article>
             `;
           }).join('')}

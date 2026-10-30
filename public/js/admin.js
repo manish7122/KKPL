@@ -911,146 +911,10 @@ function renderAdminMatches() {
     const home = match.homeTeam;
     const away = match.awayTeam;
     const statusLabel = match.status[0].toUpperCase() + match.status.slice(1);
-    const playerTable = (team) => {
-      const scored = new Map(match.playerPoints.map((entry) => [entry.playerId, entry]));
-      const players = getPlayers().filter((player) => player.teamId === team.id);
-      if (!players.length) return '<p class="match-no-players">No players assigned to this team yet.</p>';
-      return `
-        <div class="match-stats-scroll"><table class="match-stats-table">
-          <thead><tr><th>Player</th><th>Raid</th><th>Tackle</th><th>Bonus</th><th>Other</th><th>Total</th></tr></thead>
-          <tbody>${players.map((player) => {
-            const points = scored.get(player.id);
-            return `<tr><th scope="row">${escapeHtml(player.name)}</th>
-              <td>${points?.raidPoints || 0}</td><td>${points?.tacklePoints || 0}</td>
-              <td>${points?.bonusPoints || 0}</td><td>${points?.otherPoints || 0}</td>
-              <td><strong>${points?.total || 0}</strong></td></tr>`;
-          }).join('')}</tbody>
-        </table></div>
-      `;
-    };
-    const extras = (teamId) => teamId === home.id ? match.extras.home : match.extras.away;
-    const teamPanel = (team) => `
-      <section class="match-points-team">
-        <h4>${escapeHtml(team.name)} — Player Points</h4>
-        ${playerTable(team)}
-        <p class="match-extras-line">Extras: All-outs <strong>${extras(team.id).allOut}</strong>
-          · Technical <strong>${extras(team.id).technical}</strong>
-          · Total <strong>${extras(team.id).total}</strong></p>
-      </section>
-    `;
-    const eventLabel = (event) => ({
-      raid: 'Raid', tackle: 'Tackle', bonus: 'Bonus', all_out: 'All-out',
-      technical: 'Technical / extra', legacy: 'Other (migrated)'
-    }[event.type] || event.type);
     const tossDecisionText = match.toss?.decision === 'raid' ? 'elected to raid' : 'elected to choose court side';
-    const rosterOptions = (teamId) => getPlayers()
-      .filter((player) => player.teamId === teamId)
-      .map((player) => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}</option>`)
-      .join('') || '<option value="">No players assigned to this team</option>';
-    const tieBreakPhase = match.tieBreak?.phase;
-    const tieBreakSummary = match.tieBreak?.phase ? `
-      <p class="match-tiebreak-summary">
-        Super 5: <strong>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</strong>
-        ${match.tieBreak.toss ? ` · Golden toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${escapeHtml(match.tieBreak.toss.decision)}.` : ''}
-      </p>
-    ` : '';
-    const liveScoringForm = match.status !== 'live' ? '' : tieBreakPhase === 'super5' ? `
-      <div class="match-tiebreak-panel">
-        <h4>Super 5 Tie-break — Raid ${match.tieBreak.raids + 1} of 10</h4>
-        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
-        <p>Next raid: <strong>${escapeHtml(getTeamById(match.tieBreak.expectedTeamId)?.name || home.name)}</strong></p>
-        <form class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
-          <input type="hidden" name="type" value="raid"/>
-          <label>Raiding team
-            <select name="teamId" required>
-              <option value="${escapeHtml(match.tieBreak.expectedTeamId)}">${escapeHtml(getTeamById(match.tieBreak.expectedTeamId)?.name || home.name)}</option>
-            </select>
-          </label>
-          <label>Raider
-            <select name="playerId" required>${rosterOptions(match.tieBreak.expectedTeamId)}</select>
-          </label>
-          <label>Raid points (0–7)
-            <input name="points" type="number" min="0" max="7" value="0" required/>
-          </label>
-          <button class="btn-primary" type="submit">Record Super 5 Raid</button>
-        </form>
-        ${match.tieBreak.raids === 10 && match.tieBreak.homeScore !== match.tieBreak.awayScore
-          ? `<button class="btn-primary match-finish-tiebreak" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','completed')">Complete Match</button>`
-          : ''}
-      </div>
-    ` : tieBreakPhase === 'golden_toss' ? `
-      <div class="match-tiebreak-panel">
-        <h4>Super 5 tied — Golden Raid Toss</h4>
-        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
-        <form class="match-toss-form" onsubmit="saveGoldenToss(event,'${escapeHtml(match.id)}')">
-          <label>Toss winner
-            <select name="winnerTeamId" required>
-              <option value="">Select team</option>
-              <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
-              <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
-            </select>
-          </label>
-          <label>Toss winner chooses
-            <select name="decision" required>
-              <option value="">Choose raid or defend</option>
-              <option value="raid">Raid</option>
-              <option value="defend">Defend</option>
-            </select>
-          </label>
-          <button class="btn-primary" type="submit">Save Golden Raid Toss</button>
-        </form>
-      </div>
-    ` : tieBreakPhase === 'golden_raid' ? `
-      <div class="match-tiebreak-panel">
-        <h4>Golden Raid — One Deciding Raid</h4>
-        <p>Toss: <strong>${escapeHtml(match.tieBreak.toss.winnerTeamName)}</strong> chose to ${match.tieBreak.toss.decision}.</p>
-        <p><strong>${escapeHtml(getTeamById(match.tieBreak.goldenRaidTeamId)?.name || '')}</strong> takes the only raid.</p>
-        <form class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
-          <input type="hidden" name="type" value="raid"/>
-          <label>Raiding team
-            <select name="teamId" required>
-              <option value="${escapeHtml(match.tieBreak.goldenRaidTeamId)}">${escapeHtml(getTeamById(match.tieBreak.goldenRaidTeamId)?.name || '')}</option>
-            </select>
-          </label>
-          <label>Raider
-            <select name="playerId" required>${rosterOptions(match.tieBreak.goldenRaidTeamId)}</select>
-          </label>
-          <label>Raid points (0–7)
-            <input name="points" type="number" min="0" max="7" value="0" required/>
-          </label>
-          <button class="btn-primary" type="submit">Record Golden Raid</button>
-        </form>
-      </div>
-    ` : tieBreakPhase === 'completed' ? `
-      <div class="match-tiebreak-panel">
-        <h4>Tie-break winner determined</h4>
-        <p>${escapeHtml(home.name)} ${match.tieBreak.homeScore} – ${match.tieBreak.awayScore} ${escapeHtml(away.name)}</p>
-        <p>${escapeHtml(getMatchOutcome({ ...match, status: 'completed' }))}</p>
-        <button class="btn-primary match-finish-tiebreak" type="button" onclick="setMatchStatus('${escapeHtml(match.id)}','completed')">Complete Match</button>
-      </div>
-    ` : `
-      <form id="match-event-form-${escapeHtml(match.id)}" class="match-event-form" onsubmit="saveMatchEvent(event,'${escapeHtml(match.id)}')">
-        <label>Team
-          <select name="teamId" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
-            <option value="${escapeHtml(home.id)}">${escapeHtml(home.name)}</option>
-            <option value="${escapeHtml(away.id)}">${escapeHtml(away.name)}</option>
-          </select>
-        </label>
-        <label>Event
-          <select name="type" required onchange="updateMatchEventFields('${escapeHtml(match.id)}')">
-            <option value="raid">Raid points</option><option value="tackle">Tackle points</option>
-            <option value="bonus">Bonus point</option><option value="all_out">All-out (2 points)</option>
-            <option value="technical">Technical / extra points</option>
-          </select>
-        </label>
-        <label data-player-control>Player <select name="playerId" required></select></label>
-        <label data-points-control>Points <input name="points" type="number" min="1" max="5" value="1" required /></label>
-        <button class="btn-primary" type="submit">Add scoring event</button>
-      </form>
-    `;
 
     return `
-      <article class="match-card match-admin-card">
+      <article class="match-card match-admin-card" id="match-card-${escapeHtml(match.id)}">
         <div class="match-card-header">
           <div>
             <span class="match-status match-status-${escapeHtml(match.status)}">${escapeHtml(statusLabel)}</span>
@@ -1078,6 +942,7 @@ function renderAdminMatches() {
             <button class="btn-icon danger" type="button" onclick="removeMatch('${escapeHtml(match.id)}')">🗑 Delete Match</button>
           </div>
         </div>
+
         ${match.status === 'scheduled' ? `
           <form class="match-toss-form" onsubmit="saveMatchToss(event,'${escapeHtml(match.id)}')">
             <label>Toss won by
@@ -1099,62 +964,60 @@ function renderAdminMatches() {
         ` : match.toss ? `
           <p class="match-toss-summary">Toss: <strong>${escapeHtml(match.toss.winnerTeamName)}</strong> won and ${tossDecisionText}.</p>
         ` : ''}
+
         ${match.status === 'completed' ? `
           <p class="match-outcome">${escapeHtml(getMatchOutcome(match))}</p>
-          ${tieBreakSummary}
         ` : ''}
-        ${match.status === 'completed' ? `
-          <button class="match-scoreboard match-score-toggle" type="button"
-            aria-expanded="false" aria-controls="admin-match-details-${escapeHtml(match.id)}"
-            aria-label="Show player points for ${escapeHtml(home.name)} versus ${escapeHtml(away.name)}"
-            onclick="toggleMatchDetails(event,'admin-match-details-${escapeHtml(match.id)}')">
-            <span class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
-              <span class="match-team-name">${escapeHtml(home.name)}</span>
-              <span class="match-score-value">${match.homeScore}</span>
-            </span>
-            <span class="match-score-separator">–</span>
-            <span class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
-              <span class="match-team-name">${escapeHtml(away.name)}</span>
-              <span class="match-score-value">${match.awayScore}</span>
-            </span>
-          </button>
-          <p class="match-score-hint">Click the score to view player points</p>
-          <div id="admin-match-details-${escapeHtml(match.id)}" class="match-player-points match-readonly-points" hidden>
-            ${teamPanel(home)}${teamPanel(away)}
-          </div>
-        ` : `
-          <div class="match-scoreboard">
-            <div class="match-side" style="--match-team-color:${escapeHtml(home.color)}">
-              <div class="match-team-name">${escapeHtml(home.name)}</div>
-              <div class="match-score-value">${match.homeScore}</div>
+
+        <!-- Team Score Board & Live Controller -->
+        <div class="team-score-controller">
+          <div class="team-score-box" style="--team-accent: ${escapeHtml(home.color || '#ff6600')}">
+            <div class="team-score-header">
+              <span class="team-color-dot" style="background:${escapeHtml(home.color || '#ff6600')}"></span>
+              <span class="team-score-name">${escapeHtml(home.name)}</span>
             </div>
-            <span class="match-score-separator">–</span>
-            <div class="match-side" style="--match-team-color:${escapeHtml(away.color)}">
-              <div class="match-team-name">${escapeHtml(away.name)}</div>
-              <div class="match-score-value">${match.awayScore}</div>
+            <div class="team-score-digit" id="score-display-home-${escapeHtml(match.id)}">${match.homeScore}</div>
+            <div class="score-quick-buttons">
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'home', 1)">+1</button>
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'home', 2)">+2</button>
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'home', 3)">+3</button>
+              <button type="button" class="btn-score-pill btn-score-minus" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'home', -1)">-1</button>
+            </div>
+            <div class="score-input-wrap">
+              <label>Set Score:</label>
+              <input type="number" min="0" id="score-input-home-${escapeHtml(match.id)}" value="${match.homeScore}" class="team-score-input" />
             </div>
           </div>
-          ${match.status === 'live' ? `
-            <div class="match-player-points match-readonly-points">${teamPanel(home)}${teamPanel(away)}</div>
-          ` : ''}
-        `}
-        ${liveScoringForm}
-        ${match.status === 'live' ? `
-          <section class="match-event-history">
-            <h4>Scoring event history</h4>
-            ${match.events.length ? match.events.map((event) => `
-              <div class="match-event-row">
-                <span><strong>${escapeHtml(eventLabel(event))}</strong>${event.period !== 'regular' ? ` (${escapeHtml(event.period)})` : ''} · ${escapeHtml(event.teamName)}
-                  ${event.playerName ? `· ${escapeHtml(event.playerName)}` : ''} · ${event.points} pts</span>
-                <button class="btn-icon danger" type="button" onclick="removeMatchEvent('${escapeHtml(match.id)}','${escapeHtml(event.id)}')">Remove</button>
-              </div>
-            `).join('') : '<p class="match-no-players">No scoring events yet.</p>'}
-          </section>
-        ` : ''}
+
+          <div class="score-vs-center">
+            <span class="score-vs-badge">VS</span>
+            <div class="score-controller-actions">
+              <button type="button" class="btn-primary btn-save-score" onclick="saveTeamScore('${escapeHtml(match.id)}')">💾 Save Scores</button>
+              <button type="button" class="btn-icon btn-reset-score" onclick="resetTeamScore('${escapeHtml(match.id)}')">↺ Reset (0 - 0)</button>
+            </div>
+          </div>
+
+          <div class="team-score-box" style="--team-accent: ${escapeHtml(away.color || '#ff6600')}">
+            <div class="team-score-header">
+              <span class="team-color-dot" style="background:${escapeHtml(away.color || '#ff6600')}"></span>
+              <span class="team-score-name">${escapeHtml(away.name)}</span>
+            </div>
+            <div class="team-score-digit" id="score-display-away-${escapeHtml(match.id)}">${match.awayScore}</div>
+            <div class="score-quick-buttons">
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'away', 1)">+1</button>
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'away', 2)">+2</button>
+              <button type="button" class="btn-score-pill" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'away', 3)">+3</button>
+              <button type="button" class="btn-score-pill btn-score-minus" onclick="quickAddTeamScore('${escapeHtml(match.id)}', 'away', -1)">-1</button>
+            </div>
+            <div class="score-input-wrap">
+              <label>Set Score:</label>
+              <input type="number" min="0" id="score-input-away-${escapeHtml(match.id)}" value="${match.awayScore}" class="team-score-input" />
+            </div>
+          </div>
+        </div>
       </article>
     `;
   }).join('');
-  matches.filter((match) => match.status === 'live').forEach((match) => updateMatchEventFields(match.id));
 }
 
 function openMatchModal(matchId) {
@@ -1286,57 +1149,55 @@ async function removeMatch(matchId) {
   }
 }
 
-function updateMatchEventFields(matchId) {
-  const form = document.getElementById(`match-event-form-${matchId}`);
-  if (!form) return;
-  const type = form.elements.type.value;
-  const playerControl = form.querySelector('[data-player-control]');
-  const pointsControl = form.querySelector('[data-points-control]');
-  const playerSelect = form.elements.playerId;
-  const teamId = form.elements.teamId.value;
-  const requiresPlayer = ['raid', 'tackle', 'bonus'].includes(type);
-  const teamPlayers = getPlayers().filter((player) => player.teamId === teamId);
-  playerControl.hidden = !requiresPlayer;
-  playerSelect.required = requiresPlayer;
-  playerSelect.innerHTML = teamPlayers.map((player) =>
-    `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)} (${escapeHtml(player.category)})</option>`
-  ).join('') || '<option value="">No players assigned to this team</option>';
-  const fixedPoints = type === 'all_out' || type === 'bonus';
-  pointsControl.hidden = fixedPoints;
-  form.elements.points.required = !fixedPoints;
-  if (type === 'technical') {
-    form.elements.points.max = '99';
-    form.elements.points.value = '1';
-  } else {
-    form.elements.points.max = type === 'raid' ? '7' : '2';
-    if (fixedPoints) form.elements.points.value = type === 'all_out' ? '2' : '1';
-  }
-}
+async function quickAddTeamScore(matchId, side, delta) {
+  const match = getMatches().find((m) => m.id === matchId);
+  if (!match) return;
+  const currentHome = Number(match.homeScore) || 0;
+  const currentAway = Number(match.awayScore) || 0;
+  let newHome = currentHome;
+  let newAway = currentAway;
 
-async function saveMatchEvent(event, matchId) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const type = form.elements.type.value;
+  if (side === 'home') {
+    newHome = Math.max(0, currentHome + delta);
+  } else {
+    newAway = Math.max(0, currentAway + delta);
+  }
+
   try {
-    await createMatchEvent(matchId, {
-      teamId: form.elements.teamId.value,
-      type,
-      playerId: ['raid', 'tackle', 'bonus'].includes(type) ? form.elements.playerId.value : null,
-      points: ['raid', 'tackle', 'technical'].includes(type) ? Number(form.elements.points.value) : undefined
-    });
+    await updateMatchScore(matchId, newHome, newAway);
     renderAdminMatches();
-    showToast('Scoring event added.');
+    showToast(`Score updated: ${newHome} - ${newAway}`);
   } catch (error) {
     showRequestError(error);
   }
 }
 
-async function removeMatchEvent(matchId, eventId) {
-  if (!confirm('Remove this scoring event and recalculate the match score?')) return;
+async function saveTeamScore(matchId) {
+  const homeInput = document.getElementById(`score-input-home-${matchId}`);
+  const awayInput = document.getElementById(`score-input-away-${matchId}`);
+  if (!homeInput || !awayInput) return;
+
+  const homeScore = Math.max(0, parseInt(homeInput.value, 10) || 0);
+  const awayScore = Math.max(0, parseInt(awayInput.value, 10) || 0);
+
   try {
-    await deleteMatchEvent(matchId, eventId);
+    await updateMatchScore(matchId, homeScore, awayScore);
     renderAdminMatches();
-    showToast('Scoring event removed and score recalculated.');
+    showToast(`Scores saved: ${homeScore} - ${awayScore}`);
+  } catch (error) {
+    showRequestError(error);
+  }
+}
+
+async function resetTeamScore(matchId) {
+  const match = getMatches().find((m) => m.id === matchId);
+  const title = match ? `${match.homeTeam.name} vs ${match.awayTeam.name}` : 'this match';
+  if (!confirm(`Reset scores to 0 - 0 for ${title}?`)) return;
+
+  try {
+    await updateMatchScore(matchId, 0, 0);
+    renderAdminMatches();
+    showToast('Match scores reset to 0 - 0.');
   } catch (error) {
     showRequestError(error);
   }

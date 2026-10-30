@@ -1184,3 +1184,672 @@ body.auction-result-open { overflow: hidden; }
   .auction-result-photo-wrap { width: min(64vw, 240px); border-width: 8px; }
   .auction-result-stamp { right: -10px; bottom: 8px; width: 64px; height: 64px; font-size: 2.7rem; }
 }
+
+/* =========================================================
+   TEAM SCORE CONTROLLER (ADMIN) & PUBLIC MATCH CENTER (USER)
+   ========================================================= */
+
+/* Admin Team Score Controller */
+.team-score-controller {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 22px;
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  margin-top: 14px;
+}
+
+.team-score-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top: 4px solid var(--team-accent, var(--orange));
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.team-score-box:hover {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.team-score-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.team-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.team-score-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.team-score-digit {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 4rem;
+  line-height: 1;
+  color: #ffffff;
+  margin: 6px 0 12px;
+  text-shadow: 0 0 20px rgba(255, 107, 0, 0.3);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-quick-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-score-pill {
+  background: rgba(255, 107, 0, 0.15);
+  color: var(--orange);
+  border: 1px solid rgba(255, 107, 0, 0.35);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-score-pill:hover {
+  background: var(--orange);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 0, 0.4);
+}
+
+.btn-score-pill.btn-score-minus {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-score-pill.btn-score-minus:hover {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.score-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.team-score-input {
+  width: 70px;
+  text-align: center;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+}
+
+.team-score-input:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.4);
+}
+
+.score-vs-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.score-vs-badge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+}
+
+.score-controller-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 140px;
+}
+
+.btn-save-score {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.btn-reset-score {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reset-score:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Header Navigation Tabs */
+.portal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.nav-tab-btn:hover {
+  background: rgba(255, 107, 0, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(255, 107, 0, 0.4);
+}
+
+.nav-tab-btn.active {
+  background: linear-gradient(135deg, rgba(255, 107, 0, 0.25), rgba(255, 107, 0, 0.1));
+  color: var(--orange);
+  border-color: var(--orange);
+  box-shadow: 0 0 15px rgba(255, 107, 0, 0.25);
+}
+
+/* Pulses */
+.pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: inline-block;
+  animation: pulse-red 1.5s infinite;
+}
+
+.pulse-dot-green {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  animation: pulse-green 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes pulse-green {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* Public Match Center */
+.public-match-center {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px 80px;
+}
+
+.public-match-hero {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.public-match-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3.5rem;
+  letter-spacing: 2px;
+  line-height: 1;
+  margin: 0 0 8px;
+  color: #ffffff;
+}
+
+.public-match-title .accent {
+  color: var(--orange);
+}
+
+.public-match-sub {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Match Filter Bar */
+.match-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill-btn {
+  padding: 8px 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pill-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 107, 0, 0.4);
+}
+
+.pill-btn.active {
+  background: rgba(255, 107, 0, 0.2);
+  color: var(--orange);
+  border-color: var(--orange);
+  box-shadow: 0 0 12px rgba(255, 107, 0, 0.25);
+}
+
+.match-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.live-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #86efac;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.btn-refresh {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+  background: rgba(255, 107, 0, 0.2);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* Public Matches Grid */
+.public-matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+/* Public Match Card */
+.public-match-card {
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-match-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 107, 0, 0.4);
+}
+
+.public-match-card.is-live {
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.15);
+}
+
+.public-match-card-header {
+  padding: 14px 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.public-match-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-match-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.public-badge-live {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.public-badge-scheduled {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.public-badge-completed {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.public-round-badge {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.public-match-time {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* Public Scoreboard Body */
+.public-scoreboard-body {
+  padding: 24px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.public-team-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.public-team-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: #fff;
+  margin-bottom: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.public-team-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 4px;
+  max-width: 140px;
+}
+
+.public-team-city {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.public-score-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.public-score-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.public-score-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3.4rem;
+  line-height: 1;
+  color: #ffffff;
+  min-width: 50px;
+  text-align: center;
+}
+
+.public-score-num.score-winner {
+  color: #4ade80;
+  text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+
+.public-score-dash {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.2rem;
+  color: var(--text-muted);
+}
+
+.public-vs-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: 2px;
+  color: var(--orange);
+  background: rgba(255, 107, 0, 0.1);
+  padding: 4px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 107, 0, 0.25);
+}
+
+.public-lead-status {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.lead-status-live {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.lead-status-tied {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* Public Card Footer */
+.public-card-footer {
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.public-venue-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-winner-badge {
+  color: #4ade80;
+  font-weight: 600;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.4px;
+}
+
+.public-empty-box {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.public-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.public-empty-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.public-empty-sub {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .login-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+  .portal-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  .public-match-title {
+    font-size: 2.8rem;
+  }
+  .team-score-controller {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .score-vs-center {
+    order: -1;
+  }
+  .match-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-pills {
+    justify-content: center;
+  }
+  .match-bar-actions {
+    justify-content: space-between;
+  }
+}
